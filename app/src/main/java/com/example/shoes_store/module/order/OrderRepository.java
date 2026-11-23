@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData;
 
 import com.example.shoes_store.core.MockStoreHelper;
 import com.example.shoes_store.module.cart.CartItemModel;
+import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
 
@@ -64,5 +65,22 @@ public class OrderRepository {
 
     public void reorder(@NonNull OrderModel order) {
         store.reorder(order);
+    }
+
+    public List<CartVoucherModel> getVouchers() {
+        return store.getVouchers();
+    }
+
+    @Nullable
+    public CartVoucherModel findVoucherByCode(@Nullable String code) {
+        if (code == null) {
+            return null;
+        }
+        for (CartVoucherModel voucher : store.getVouchers()) {
+            if (voucher.getCode().equalsIgnoreCase(code)) {
+                return voucher;
+            }
+        }
+        return null;
     }
 }

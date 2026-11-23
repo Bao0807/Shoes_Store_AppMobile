@@ -25,14 +25,31 @@
         android:textColor="@color/text_primary"
         android:textSize="18sp" />
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:fontFamily="sans-serif-medium"
-        android:text="Nhu cầu chạy bộ"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="Nhu cầu chạy bộ"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/filter_category_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:text="Chọn nhiều"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp" />
+    </LinearLayout>
 
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/filter_category_chips"
@@ -40,18 +57,33 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         app:chipSpacingHorizontal="8dp"
-        app:chipSpacingVertical="6dp"
-        app:selectionRequired="true"
-        app:singleSelection="true" />
+        app:chipSpacingVertical="6dp" />
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:fontFamily="sans-serif-medium"
-        android:text="Thương hiệu"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="Thương hiệu"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/filter_brand_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:text="Chọn nhiều"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp" />
+    </LinearLayout>
 
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/filter_brand_chips"
@@ -59,9 +91,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         app:chipSpacingHorizontal="8dp"
-        app:chipSpacingVertical="6dp"
-        app:selectionRequired="true"
-        app:singleSelection="true" />
+        app:chipSpacingVertical="6dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -122,6 +152,8 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:layout_weight="1.4"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="@string/filter_apply" />
     </LinearLayout>
 

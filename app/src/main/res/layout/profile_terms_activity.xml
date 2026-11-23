@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/terms_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_surface"
+    android:orientation="vertical">
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_screen"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="12dp">
+
+        <ImageButton
+            android:id="@+id/terms_back_btn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_back"
+            app:tint="@color/text_primary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:fontFamily="sans-serif-bold"
+            android:text="@string/profile_terms_title"
+            android:textColor="@color/text_primary"
+            android:textSize="19sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider_light" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_pill"
+                android:backgroundTint="@color/brand_accent_soft"
+                android:fontFamily="sans-serif-medium"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="5dp"
+                android:text="Cập nhật lần cuối: 11/2026"
+                android:textColor="@color/brand_accent_dark"
+                android:textSize="12sp" />
+
+            <!-- 1. Điều khoản sử dụng & Đặt hàng -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="1. Điều khoản sử dụng &amp; Đặt hàng"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Khách hàng cam kết cung cấp đúng thông tin người nhận, số điện thoại và địa chỉ giao hàng khi tạo đơn.\n• Giá bán niêm yết trên ứng dụng đã bao gồm thuế VAT và hiển thị rõ phí vận chuyển trước bước xác nhận.\n• Khách hàng có thể hủy đơn miễn phí khi đơn hàng đang ở trạng thái Chờ xác nhận."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+            <!-- 2. Chính sách thanh toán -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="2. Chính sách thanh toán"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Hỗ trợ thanh toán khi nhận hàng (COD), chuyển khoản ngân hàng qua mã QR và ví điện tử.\n• Mọi giao dịch được xác nhận minh bạch, không thu thêm phụ phí ngoài tổng thanh toán hiển thị trên đơn."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+            <!-- 3. Chính sách vận chuyển & Đồng kiểm -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="3. Chính sách vận chuyển &amp; Đồng kiểm"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Giao tiêu chuẩn toàn quốc trong 2–3 ngày làm việc; giao nhanh 24h áp dụng tại khu vực nội thành.\n• Khách hàng được quyền đồng kiểm ngoại quan mẫu mã, phối màu và đúng size EU trước khi thanh toán cho shipper."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+            <!-- 4. Chính sách đổi trả & Hoàn tiền -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="4. Chính sách đổi trả &amp; Hoàn tiền"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Hỗ trợ đổi size hoặc đổi mẫu trong 7 ngày kể từ ngày nhận hàng với sản phẩm còn nguyên tem mác, hộp giày và chưa chạy ngoài trời.\n• Miễn phí 100% chi phí đổi trả nếu sản phẩm có lỗi từ nhà sản xuất hoặc shop giao sai mẫu/size.\n• Tiền hoàn lại (nếu có) được xử lý trong 3–5 ngày làm việc qua tài khoản ngân hàng hoặc ví đã thanh toán."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+            <!-- 5. Chính sách bảo hành -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="5. Chính sách bảo hành"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Bảo hành chính hãng 6 tháng đối với các lỗi bong keo, hở đế hoặc lỗi đường chỉ kỹ thuật từ nhà sản xuất.\n• Không áp dụng bảo hành cho trường hợp mòn đế tự nhiên do quãng đường chạy hoặc hư hỏng do tác động ngoại lực, giặt sấy sai cách."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+            <!-- 6. Bảo mật thông tin khách hàng -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="6. Bảo mật thông tin khách hàng"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Shoes Store cam kết bảo mật tuyệt đối thông tin cá nhân, số điện thoại, địa chỉ và hồ sơ size giày của khách hàng.\n• Dữ liệu chỉ được dùng để xử lý đơn hàng, bảo hành và nâng cao trải nghiệm tư vấn, không chia sẻ trái phép cho bên thứ ba."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>

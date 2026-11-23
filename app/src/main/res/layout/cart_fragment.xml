@@ -31,7 +31,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingBottom="88dp">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/cart_recycler"
@@ -73,10 +74,11 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/cart_voucher_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
-                    android:text="Voucher RUN50K"
+                    android:text="Voucher của cửa hàng"
                     android:textColor="@color/text_primary"
                     android:textSize="13.5sp" />
 
@@ -84,7 +86,7 @@
                     android:id="@+id/cart_voucher_subtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Bấm để áp dụng giảm 150.000₫"
+                    android:text="Chọn hoặc nhập mã giảm giá"
                     android:textColor="@color/text_secondary"
                     android:textSize="11.5sp" />
             </LinearLayout>
@@ -94,9 +96,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-bold"
-                android:text="Áp dụng"
+                android:text="Chọn mã"
                 android:textColor="@color/brand_accent"
                 android:textSize="13sp" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                app:tint="@color/brand_accent" />
         </LinearLayout>
 
         <View
@@ -169,6 +179,7 @@
         android:gravity="center"
         android:orientation="vertical"
         android:paddingHorizontal="28dp"
+        android:paddingBottom="76dp"
         android:visibility="gone">
 
         <FrameLayout

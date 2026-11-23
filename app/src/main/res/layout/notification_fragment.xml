@@ -88,7 +88,7 @@
         android:clipToPadding="false"
         android:paddingHorizontal="16dp"
         android:paddingTop="8dp"
-        android:paddingBottom="16dp" />
+        android:paddingBottom="96dp" />
 
     <TextView
         android:id="@+id/notif_empty_text"

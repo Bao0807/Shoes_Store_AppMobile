@@ -35,6 +35,7 @@ public class CartFragment extends Fragment {
     private TextView headerTitle;
     private View contentContainer;
     private View emptyState;
+    private TextView voucherTitle;
     private TextView voucherSubtitle;
     private TextView voucherAction;
     private MaterialCheckBox selectAllCb;
@@ -56,6 +57,7 @@ public class CartFragment extends Fragment {
         headerTitle = view.findViewById(R.id.cart_header_title);
         contentContainer = view.findViewById(R.id.cart_content_container);
         emptyState = view.findViewById(R.id.cart_empty_state);
+        voucherTitle = view.findViewById(R.id.cart_voucher_title);
         voucherSubtitle = view.findViewById(R.id.cart_voucher_subtitle);
         voucherAction = view.findViewById(R.id.cart_voucher_action);
         selectAllCb = view.findViewById(R.id.cart_select_all_cb);
@@ -90,10 +92,7 @@ public class CartFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
 
-        view.findViewById(R.id.cart_voucher_row).setOnClickListener(v -> {
-            viewModel.toggleVoucher();
-            refreshSummary();
-        });
+        view.findViewById(R.id.cart_voucher_row).setOnClickListener(v -> openVoucherSheet());
 
         view.findViewById(R.id.cart_pick_shoes_btn).setOnClickListener(v -> {
             if (getActivity() instanceof MainActivity) {
@@ -106,11 +105,14 @@ public class CartFragment extends Fragment {
                 Toast.makeText(requireContext(), "Vui lòng chọn ít nhất 1 đôi giày", Toast.LENGTH_SHORT).show();
                 return;
             }
+            long subtotal = getSelectedSubtotal();
+            long discount = viewModel.calculateEffectiveDiscount(subtotal);
+            CartVoucherModel activeVoucher = viewModel.getSelectedVoucher();
             Intent intent = new Intent(requireContext(), OrderCheckoutActivity.class);
-            intent.putExtra(
-                    OrderCheckoutActivity.EXTRA_DISCOUNT_AMOUNT,
-                    viewModel.isVoucherApplied() ? CartViewModel.VOUCHER_DISCOUNT_AMOUNT : 0L
-            );
+            intent.putExtra(OrderCheckoutActivity.EXTRA_DISCOUNT_AMOUNT, discount);
+            if (activeVoucher != null && discount > 0) {
+                intent.putExtra(OrderCheckoutActivity.EXTRA_VOUCHER_CODE, activeVoucher.getCode());
+            }
             startActivity(intent);
         });
 
@@ -119,6 +121,24 @@ public class CartFragment extends Fragment {
             adapter.submitList(items);
             refreshSummary();
         });
+    }
+
+    private void openVoucherSheet() {
+        long subtotal = getSelectedSubtotal();
+        if (subtotal <= 0) {
+            Toast.makeText(requireContext(), "Vui lòng chọn sản phẩm trước khi chọn voucher", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        CartVoucherBottomSheet sheet = CartVoucherBottomSheet.newInstance(
+                viewModel.getAvailableVouchers(),
+                subtotal,
+                viewModel.getSelectedVoucher(),
+                selected -> {
+                    viewModel.setSelectedVoucher(selected);
+                    refreshSummary();
+                }
+        );
+        sheet.show(getChildFragmentManager(), "cart_voucher_sheet");
     }
 
     private void refreshSummary() {
@@ -144,19 +164,38 @@ public class CartFragment extends Fragment {
         contentContainer.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
         emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
 
-        boolean voucherOn = viewModel.isVoucherApplied();
-        voucherSubtitle.setText(voucherOn ? "Đã áp dụng · Giảm 150.000₫" : "Bấm để áp dụng giảm 150.000₫");
-        voucherAction.setText(voucherOn ? "Bỏ chọn" : "Áp dụng");
+        long discount = viewModel.calculateEffectiveDiscount(selectedSubtotal);
+        CartVoucherModel activeVoucher = viewModel.getSelectedVoucher();
+        if (activeVoucher != null && discount > 0) {
+            voucherTitle.setText("Mã " + activeVoucher.getCode());
+            voucherSubtitle.setText("Đã giảm " + CurrencyFormatUtil.formatVnd(discount));
+            voucherAction.setText("Đổi mã");
+        } else {
+            voucherTitle.setText("Voucher của cửa hàng");
+            voucherSubtitle.setText("Bấm để chọn hoặc nhập mã giảm giá");
+            voucherAction.setText("Chọn mã");
+        }
 
-        long discount = (voucherOn && selectedSubtotal > 0) ? CartViewModel.VOUCHER_DISCOUNT_AMOUNT : 0L;
         long finalTotal = Math.max(0L, selectedSubtotal - discount);
-
         totalPriceText.setText(CurrencyFormatUtil.formatVnd(finalTotal));
         checkoutBtn.setText("Mua hàng (" + selectedQty + ")");
 
         selectAllCb.setOnCheckedChangeListener(null);
         selectAllCb.setChecked(allSelected);
         selectAllCb.setOnCheckedChangeListener((buttonView, isChecked) -> viewModel.selectAll(isChecked));
+    }
+
+    private long getSelectedSubtotal() {
+        if (latestItems == null) {
+            return 0L;
+        }
+        long subtotal = 0L;
+        for (CartItemModel item : latestItems) {
+            if (item.isSelected()) {
+                subtotal += item.getLineTotal();
+            }
+        }
+        return subtotal;
     }
 
     private int getSelectedQuantity() {

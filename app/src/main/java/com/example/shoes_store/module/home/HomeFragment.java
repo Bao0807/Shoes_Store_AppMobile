@@ -2,6 +2,9 @@ package com.example.shoes_store.module.home;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +14,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -19,9 +23,10 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.AvatarImageHelper;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.example.shoes_store.module.product.ProductModel;
-import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.List;
@@ -33,15 +38,26 @@ public class HomeFragment extends Fragment {
 
     private HomeViewModel viewModel;
     private HomeShoeAdapter shoeAdapter;
+    private NestedScrollView scrollView;
+    private View refreshProgress;
     private ViewPager2 bannerPager;
     private LinearLayout bannerDotsLayout;
-    private ChipGroup categoryChipGroup;
+    private Chip chipCatAll;
+    private Chip chipCatDaily;
+    private Chip chipCatRace;
+    private Chip chipCatTempo;
+    private Chip chipCatTrail;
+    private Chip chipCatRecovery;
     private TextView sectionTitleView;
     private TextView productCountView;
     private TextView clearFilterView;
     private View filterDotView;
     private View emptyStateView;
     private RecyclerView shoeRecyclerView;
+
+    private final Handler refreshHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingRefreshTask;
+    private boolean isRefreshing = false;
 
     @Nullable
     @Override
@@ -57,10 +73,17 @@ public class HomeFragment extends Fragment {
         ShapeableImageView avatarView = view.findViewById(R.id.home_avatar);
         View searchBar = view.findViewById(R.id.home_search_bar);
         View filterBtn = view.findViewById(R.id.home_filter_btn);
+        scrollView = view.findViewById(R.id.home_scroll_view);
+        refreshProgress = view.findViewById(R.id.home_refresh_progress);
         filterDotView = view.findViewById(R.id.home_filter_dot);
         bannerPager = view.findViewById(R.id.home_banner_pager);
         bannerDotsLayout = view.findViewById(R.id.home_banner_dots);
-        categoryChipGroup = view.findViewById(R.id.home_category_chip_group);
+        chipCatAll = view.findViewById(R.id.chip_cat_all);
+        chipCatDaily = view.findViewById(R.id.chip_cat_daily);
+        chipCatRace = view.findViewById(R.id.chip_cat_race);
+        chipCatTempo = view.findViewById(R.id.chip_cat_tempo);
+        chipCatTrail = view.findViewById(R.id.chip_cat_trail);
+        chipCatRecovery = view.findViewById(R.id.chip_cat_recovery);
         sectionTitleView = view.findViewById(R.id.home_section_title);
         productCountView = view.findViewById(R.id.home_product_count);
         clearFilterView = view.findViewById(R.id.home_clear_filter);
@@ -120,25 +143,12 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupCategoryChips() {
-        categoryChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            if (checkedIds.isEmpty()) {
-                return;
-            }
-            int id = checkedIds.get(0);
-            if (id == R.id.chip_cat_daily) {
-                viewModel.setCategory("Daily");
-            } else if (id == R.id.chip_cat_race) {
-                viewModel.setCategory("Race");
-            } else if (id == R.id.chip_cat_tempo) {
-                viewModel.setCategory("Tempo");
-            } else if (id == R.id.chip_cat_trail) {
-                viewModel.setCategory("Trail");
-            } else if (id == R.id.chip_cat_recovery) {
-                viewModel.setCategory("Recovery");
-            } else {
-                viewModel.setCategory(HomeFilterState.ALL);
-            }
-        });
+        chipCatAll.setOnClickListener(v -> viewModel.clearCategories());
+        chipCatDaily.setOnClickListener(v -> viewModel.toggleCategory("Daily"));
+        chipCatRace.setOnClickListener(v -> viewModel.toggleCategory("Race"));
+        chipCatTempo.setOnClickListener(v -> viewModel.toggleCategory("Tempo"));
+        chipCatTrail.setOnClickListener(v -> viewModel.toggleCategory("Trail"));
+        chipCatRecovery.setOnClickListener(v -> viewModel.toggleCategory("Recovery"));
     }
 
     private void setupShoesGrid() {
@@ -164,7 +174,7 @@ public class HomeFragment extends Fragment {
     private void observeData(ShapeableImageView avatarView) {
         viewModel.getProfileLiveData().observe(getViewLifecycleOwner(), profile -> {
             if (profile != null) {
-                avatarView.setImageResource(profile.getAvatarResId());
+                AvatarImageHelper.bindAvatar(avatarView, profile);
             }
         });
 
@@ -183,32 +193,30 @@ public class HomeFragment extends Fragment {
             if (state == null) {
                 return;
             }
-            syncCategoryChip(state.getCategory());
+            syncCategoryChips(state);
             filterDotView.setVisibility(state.hasAdvancedFilter() ? View.VISIBLE : View.GONE);
             clearFilterView.setVisibility(state.hasAnyFilter() ? View.VISIBLE : View.GONE);
-            if (HomeFilterState.ALL.equals(state.getCategory())) {
+            if (state.isAllCategoriesSelected()) {
                 sectionTitleView.setText(R.string.home_section_suggest);
             } else {
-                sectionTitleView.setText("Giày chạy " + state.getCategory());
+                sectionTitleView.setText("Giày chạy " + TextUtils.join(", ", state.getSelectedCategories()));
             }
         });
     }
 
-    private void syncCategoryChip(String category) {
-        int targetChipId = R.id.chip_cat_all;
-        if ("Daily".equalsIgnoreCase(category)) {
-            targetChipId = R.id.chip_cat_daily;
-        } else if ("Race".equalsIgnoreCase(category)) {
-            targetChipId = R.id.chip_cat_race;
-        } else if ("Tempo".equalsIgnoreCase(category)) {
-            targetChipId = R.id.chip_cat_tempo;
-        } else if ("Trail".equalsIgnoreCase(category)) {
-            targetChipId = R.id.chip_cat_trail;
-        } else if ("Recovery".equalsIgnoreCase(category)) {
-            targetChipId = R.id.chip_cat_recovery;
-        }
-        if (categoryChipGroup.getCheckedChipId() != targetChipId) {
-            categoryChipGroup.check(targetChipId);
+    private void syncCategoryChips(HomeFilterState state) {
+        boolean allSelected = state.isAllCategoriesSelected();
+        setChipChecked(chipCatAll, allSelected);
+        setChipChecked(chipCatDaily, !allSelected && state.isCategorySelected("Daily"));
+        setChipChecked(chipCatRace, !allSelected && state.isCategorySelected("Race"));
+        setChipChecked(chipCatTempo, !allSelected && state.isCategorySelected("Tempo"));
+        setChipChecked(chipCatTrail, !allSelected && state.isCategorySelected("Trail"));
+        setChipChecked(chipCatRecovery, !allSelected && state.isCategorySelected("Recovery"));
+    }
+
+    private void setChipChecked(Chip chip, boolean checked) {
+        if (chip.isChecked() != checked) {
+            chip.setChecked(checked);
         }
     }
 
@@ -218,5 +226,44 @@ public class HomeFragment extends Fragment {
                 updated -> viewModel.updateFilterState(updated)
         );
         sheet.show(getChildFragmentManager(), "home_filter_sheet");
+    }
+
+    public void scrollToTopAndReload() {
+        if (getView() == null || viewModel == null) {
+            return;
+        }
+        scrollView.smoothScrollTo(0, 0);
+        if (bannerPager != null && bannerPager.getCurrentItem() != 0) {
+            bannerPager.setCurrentItem(0, true);
+        }
+        if (isRefreshing) {
+            return;
+        }
+        isRefreshing = true;
+        refreshProgress.setVisibility(View.VISIBLE);
+        shoeRecyclerView.animate().cancel();
+        shoeRecyclerView.animate().alpha(0.45f).setDuration(150).start();
+
+        pendingRefreshTask = () -> {
+            if (!isAdded() || getView() == null) {
+                isRefreshing = false;
+                return;
+            }
+            viewModel.reload();
+            refreshProgress.setVisibility(View.GONE);
+            shoeRecyclerView.animate().alpha(1.0f).setDuration(180).start();
+            isRefreshing = false;
+        };
+        refreshHandler.postDelayed(pendingRefreshTask, 450);
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (pendingRefreshTask != null) {
+            refreshHandler.removeCallbacks(pendingRefreshTask);
+            pendingRefreshTask = null;
+        }
+        isRefreshing = false;
+        super.onDestroyView();
     }
 }

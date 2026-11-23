@@ -9,6 +9,7 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -20,6 +21,8 @@ import com.example.shoes_store.R;
 import com.example.shoes_store.core.CurrencyFormatUtil;
 import com.example.shoes_store.core.UiInsetHelper;
 import com.example.shoes_store.module.cart.CartItemModel;
+import com.example.shoes_store.module.cart.CartVoucherBottomSheet;
+import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileAddressActivity;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
@@ -33,6 +36,7 @@ import java.util.List;
 public class OrderCheckoutActivity extends AppCompatActivity {
 
     public static final String EXTRA_DISCOUNT_AMOUNT = "extra_discount_amount";
+    public static final String EXTRA_VOUCHER_CODE = "extra_voucher_code";
     public static final String EXTRA_DIRECT_PRODUCT_ID = "extra_direct_product_id";
     public static final String EXTRA_DIRECT_SIZE = "extra_direct_size";
     public static final String EXTRA_DIRECT_COLOR = "extra_direct_color";
@@ -43,6 +47,8 @@ public class OrderCheckoutActivity extends AppCompatActivity {
     private OrderViewModel viewModel;
     private final List<CartItemModel> checkoutItems = new ArrayList<>();
     private ProfileAddressModel selectedAddress;
+    @Nullable
+    private CartVoucherModel selectedVoucher;
     private boolean isDirectBuy = false;
     private long discountAmount = 0L;
     private long shippingFee = STANDARD_SHIPPING_FEE;
@@ -51,6 +57,9 @@ public class OrderCheckoutActivity extends AppCompatActivity {
 
     private TextView addressReceiverText;
     private TextView addressDetailText;
+    private TextView voucherTitleText;
+    private TextView voucherSubtitleText;
+    private TextView voucherActionText;
     private TextView subtotalText;
     private TextView shippingFeeText;
     private View discountRow;
@@ -85,6 +94,9 @@ public class OrderCheckoutActivity extends AppCompatActivity {
 
         addressReceiverText = findViewById(R.id.checkout_address_receiver);
         addressDetailText = findViewById(R.id.checkout_address_detail);
+        voucherTitleText = findViewById(R.id.checkout_voucher_title);
+        voucherSubtitleText = findViewById(R.id.checkout_voucher_subtitle);
+        voucherActionText = findViewById(R.id.checkout_voucher_action);
         subtotalText = findViewById(R.id.checkout_subtotal);
         shippingFeeText = findViewById(R.id.checkout_shipping_fee);
         discountRow = findViewById(R.id.checkout_discount_row);
@@ -98,6 +110,7 @@ public class OrderCheckoutActivity extends AppCompatActivity {
             intent.putExtra(ProfileAddressActivity.EXTRA_PICK_MODE, true);
             pickAddressLauncher.launch(intent);
         });
+        findViewById(R.id.checkout_voucher_row).setOnClickListener(v -> openVoucherSheet());
 
         loadCheckoutData();
         selectedAddress = viewModel.getDefaultAddress();
@@ -128,6 +141,8 @@ public class OrderCheckoutActivity extends AppCompatActivity {
             }
         } else {
             discountAmount = getIntent().getLongExtra(EXTRA_DISCOUNT_AMOUNT, 0L);
+            String voucherCode = getIntent().getStringExtra(EXTRA_VOUCHER_CODE);
+            selectedVoucher = viewModel.findVoucherByCode(voucherCode);
             checkoutItems.addAll(viewModel.getSelectedCartItems());
         }
 
@@ -178,19 +193,61 @@ public class OrderCheckoutActivity extends AppCompatActivity {
         });
     }
 
-    private void recalculateTotals() {
+    private void openVoucherSheet() {
+        long subtotal = getSubtotal();
+        if (subtotal <= 0) {
+            return;
+        }
+        CartVoucherBottomSheet sheet = CartVoucherBottomSheet.newInstance(
+                viewModel.getVouchers(),
+                subtotal,
+                selectedVoucher,
+                picked -> {
+                    selectedVoucher = picked;
+                    discountAmount = picked != null ? picked.getDiscountAmount() : 0L;
+                    recalculateTotals();
+                }
+        );
+        sheet.show(getSupportFragmentManager(), "checkout_voucher_sheet");
+    }
+
+    private long getSubtotal() {
         long subtotal = 0L;
         for (CartItemModel item : checkoutItems) {
             subtotal += item.getLineTotal();
         }
-        long appliedDiscount = Math.min(discountAmount, subtotal);
-        long total = Math.max(0L, subtotal + shippingFee - appliedDiscount);
+        return subtotal;
+    }
+
+    private void recalculateTotals() {
+        long subtotal = getSubtotal();
+        if (selectedVoucher != null) {
+            if (selectedVoucher.isEligible(subtotal)) {
+                discountAmount = Math.min(selectedVoucher.getDiscountAmount(), subtotal);
+                voucherTitleText.setText("Mã " + selectedVoucher.getCode());
+                voucherSubtitleText.setText("Đã giảm " + CurrencyFormatUtil.formatVnd(discountAmount));
+                voucherActionText.setText("Đổi mã");
+            } else {
+                selectedVoucher = null;
+                discountAmount = 0L;
+                voucherTitleText.setText("Voucher của cửa hàng");
+                voucherSubtitleText.setText("Bấm để chọn hoặc nhập mã giảm giá");
+                voucherActionText.setText("Chọn mã");
+            }
+        } else {
+            discountAmount = Math.min(discountAmount, subtotal);
+            voucherTitleText.setText("Voucher của cửa hàng");
+            voucherSubtitleText.setText("Bấm để chọn hoặc nhập mã giảm giá");
+            voucherActionText.setText("Chọn mã");
+        }
+
+        long total = Math.max(0L, subtotal + shippingFee - discountAmount);
 
         subtotalText.setText(CurrencyFormatUtil.formatVnd(subtotal));
         shippingFeeText.setText(CurrencyFormatUtil.formatVnd(shippingFee));
-        if (appliedDiscount > 0) {
+        if (discountAmount > 0) {
             discountRow.setVisibility(View.VISIBLE);
-            discountText.setText("-" + CurrencyFormatUtil.formatVnd(appliedDiscount));
+            discountText.setText("-" + CurrencyFormatUtil.formatVnd(discountAmount));
         } else {
             discountRow.setVisibility(View.GONE);
         }

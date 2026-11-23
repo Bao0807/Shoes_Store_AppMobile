@@ -33,9 +33,10 @@ public class ProfileRepository {
             @NonNull String phone,
             @NonNull String email,
             @NonNull String preferredSize,
-            @NonNull String runningGoal
+            @NonNull String runningGoal,
+            @Nullable String avatarUri
     ) {
-        store.updateProfile(fullName, phone, email, preferredSize, runningGoal);
+        store.updateProfile(fullName, phone, email, preferredSize, runningGoal, avatarUri);
     }
 
     public void addOrUpdateAddress(

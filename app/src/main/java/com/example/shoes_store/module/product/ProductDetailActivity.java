@@ -16,6 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -27,12 +28,13 @@ import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.core.CurrencyFormatUtil;
 import com.example.shoes_store.core.UiInsetHelper;
 import com.example.shoes_store.module.order.OrderCheckoutActivity;
+import com.google.android.material.tabs.TabLayout;
 
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Màn hình Chi tiết giày chạy bộ (Gallery, Runner Specs, Màu, Size EU, Đánh giá).
+ * Màn hình Chi tiết giày chạy bộ (Gallery, Màu, Size EU, Tab thông tin: Mô tả / Thông số / Đổi trả / Đánh giá).
  */
 public class ProductDetailActivity extends AppCompatActivity {
 
@@ -44,6 +46,12 @@ public class ProductDetailActivity extends AppCompatActivity {
     private String selectedColorName = "";
     private int selectedColorIndex = 0;
 
+    private NestedScrollView scrollView;
+    private TabLayout infoTabs;
+    private View panelDesc;
+    private View panelSpecs;
+    private View panelReturn;
+    private View panelReviews;
     private LinearLayout galleryDotsLayout;
     private LinearLayout colorContainer;
     private TextView selectedColorText;
@@ -66,6 +74,12 @@ public class ProductDetailActivity extends AppCompatActivity {
             return;
         }
 
+        scrollView = findViewById(R.id.detail_scroll_view);
+        infoTabs = findViewById(R.id.detail_info_tabs);
+        panelDesc = findViewById(R.id.detail_panel_desc);
+        panelSpecs = findViewById(R.id.detail_panel_specs);
+        panelReturn = findViewById(R.id.detail_panel_return);
+        panelReviews = findViewById(R.id.detail_panel_reviews);
         galleryDotsLayout = findViewById(R.id.detail_gallery_dots);
         colorContainer = findViewById(R.id.detail_color_container);
         selectedColorText = findViewById(R.id.detail_selected_color_name);
@@ -84,13 +98,28 @@ public class ProductDetailActivity extends AppCompatActivity {
         findViewById(R.id.detail_size_guide_btn).setOnClickListener(v ->
                 new ProductSizeGuideBottomSheet().show(getSupportFragmentManager(), "size_guide"));
 
+        findViewById(R.id.detail_rating_row).setOnClickListener(v -> jumpToInfoTab(3));
+
+        View.OnClickListener openDetailSpecs = v -> jumpToInfoTab(1);
+        findViewById(R.id.detail_specs_more_btn).setOnClickListener(openDetailSpecs);
+        findViewById(R.id.detail_highlight_specs_row).setOnClickListener(openDetailSpecs);
+
         bindProductInfo();
         setupGallery();
         setupColorSwatches();
         setupSizeGrid();
         setupReviews();
+        setupInfoTabs();
         setupBottomActions();
         observeFavoriteState();
+    }
+
+    private void jumpToInfoTab(int tabIndex) {
+        TabLayout.Tab targetTab = infoTabs.getTabAt(tabIndex);
+        if (targetTab != null) {
+            targetTab.select();
+        }
+        scrollView.post(() -> scrollView.smoothScrollTo(0, infoTabs.getTop()));
     }
 
     private void bindProductInfo() {
@@ -117,11 +146,64 @@ public class ProductDetailActivity extends AppCompatActivity {
             discountBadge.setText("Giảm " + product.getDiscountPercent() + "%");
         }
 
+        // Tab Mô tả
+        ((TextView) findViewById(R.id.detail_desc_highlight))
+                .setText("Dòng " + product.getCategory() + " · Bề mặt " + product.getSurfaceType());
+        ((TextView) findViewById(R.id.detail_description)).setText(product.getDescription());
+
+        // Tab Thông số chi tiết (4 cards + bảng thông số)
         ((TextView) findViewById(R.id.spec_weight)).setText(product.getWeightGrams());
         ((TextView) findViewById(R.id.spec_drop)).setText(product.getHeelDropMm());
         ((TextView) findViewById(R.id.spec_cushion)).setText(product.getCushionLevel());
         ((TextView) findViewById(R.id.spec_surface)).setText(product.getSurfaceType());
-        ((TextView) findViewById(R.id.detail_description)).setText(product.getDescription());
+
+        ((TextView) findViewById(R.id.spec_table_brand)).setText(product.getBrand());
+        ((TextView) findViewById(R.id.spec_table_category)).setText(product.getCategory());
+        ((TextView) findViewById(R.id.spec_table_weight)).setText(product.getWeightGrams());
+        ((TextView) findViewById(R.id.spec_table_drop)).setText(product.getHeelDropMm());
+        ((TextView) findViewById(R.id.spec_table_cushion)).setText(product.getCushionLevel());
+        ((TextView) findViewById(R.id.spec_table_surface)).setText(product.getSurfaceType());
+        List<String> sizes = product.getAllSizes();
+        String sizeRange = (sizes != null && !sizes.isEmpty())
+                ? "EU " + sizes.get(0) + " - " + sizes.get(sizes.size() - 1)
+                : "EU 38 - 44";
+        ((TextView) findViewById(R.id.spec_table_sizes)).setText(sizeRange);
+
+        // Tab Đánh giá summary
+        ((TextView) findViewById(R.id.detail_reviews_score))
+                .setText(String.format(Locale.US, "%.1f / 5.0", product.getRating()));
+        ((TextView) findViewById(R.id.detail_reviews_summary))
+                .setText("(" + product.getReviewCount() + " đánh giá từ runner)");
+    }
+
+    private void setupInfoTabs() {
+        TabLayout.Tab reviewTab = infoTabs.getTabAt(3);
+        if (reviewTab != null) {
+            reviewTab.setText("Đánh giá (" + product.getReviewCount() + ")");
+        }
+
+        showInfoTab(0);
+        infoTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                showInfoTab(tab.getPosition());
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+            }
+        });
+    }
+
+    private void showInfoTab(int position) {
+        panelDesc.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
+        panelSpecs.setVisibility(position == 1 ? View.VISIBLE : View.GONE);
+        panelReturn.setVisibility(position == 2 ? View.VISIBLE : View.GONE);
+        panelReviews.setVisibility(position == 3 ? View.VISIBLE : View.GONE);
     }
 
     private void setupGallery() {

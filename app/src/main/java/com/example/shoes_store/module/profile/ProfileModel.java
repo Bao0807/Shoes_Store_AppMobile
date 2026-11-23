@@ -1,5 +1,7 @@
 package com.example.shoes_store.module.profile;
 
+import androidx.annotation.Nullable;
+
 /**
  * Hồ sơ cá nhân & thông tin chạy bộ của người dùng.
  */
@@ -11,6 +13,8 @@ public class ProfileModel {
     private String preferredSize;
     private String runningGoal;
     private final int avatarResId;
+    @Nullable
+    private String avatarUri;
 
     public ProfileModel(
             String fullName,
@@ -70,5 +74,14 @@ public class ProfileModel {
 
     public int getAvatarResId() {
         return avatarResId;
+    }
+
+    @Nullable
+    public String getAvatarUri() {
+        return avatarUri;
+    }
+
+    public void setAvatarUri(@Nullable String avatarUri) {
+        this.avatarUri = avatarUri;
     }
 }

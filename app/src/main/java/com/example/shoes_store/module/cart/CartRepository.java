@@ -8,7 +8,7 @@ import com.example.shoes_store.core.MockStoreHelper;
 import java.util.List;
 
 /**
- * Repository quản lý dữ liệu Giỏ hàng.
+ * Repository quản lý dữ liệu Giỏ hàng và danh sách Voucher.
  */
 public class CartRepository {
 
@@ -16,6 +16,10 @@ public class CartRepository {
 
     public LiveData<List<CartItemModel>> getCartItemsLiveData() {
         return store.getCartItemsLiveData();
+    }
+
+    public List<CartVoucherModel> getVouchers() {
+        return store.getVouchers();
     }
 
     public void updateQuantity(@NonNull String cartItemId, int delta) {

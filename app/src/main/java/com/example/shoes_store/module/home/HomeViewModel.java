@@ -56,7 +56,19 @@ public class HomeViewModel extends ViewModel {
 
     public void setCategory(@NonNull String category) {
         HomeFilterState next = getCurrentFilterState();
-        next.setCategory(category);
+        next.setSingleCategory(category);
+        updateFilterState(next);
+    }
+
+    public void toggleCategory(@NonNull String category) {
+        HomeFilterState next = getCurrentFilterState();
+        next.toggleCategory(category);
+        updateFilterState(next);
+    }
+
+    public void clearCategories() {
+        HomeFilterState next = getCurrentFilterState();
+        next.clearCategories();
         updateFilterState(next);
     }
 
@@ -81,6 +93,10 @@ public class HomeViewModel extends ViewModel {
         HomeFilterState next = getCurrentFilterState();
         next.resetFiltersOnly();
         updateFilterState(next);
+    }
+
+    public void reload() {
+        applyCurrentFilter();
     }
 
     public boolean toggleFavorite(@NonNull String productId) {

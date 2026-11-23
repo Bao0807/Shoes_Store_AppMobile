@@ -109,7 +109,7 @@
         android:clipToPadding="false"
         android:paddingHorizontal="11dp"
         android:paddingTop="6dp"
-        android:paddingBottom="16dp" />
+        android:paddingBottom="96dp" />
 
     <!-- Empty State -->
     <LinearLayout
@@ -120,6 +120,7 @@
         android:gravity="center"
         android:orientation="vertical"
         android:paddingHorizontal="28dp"
+        android:paddingBottom="76dp"
         android:visibility="gone">
 
         <FrameLayout

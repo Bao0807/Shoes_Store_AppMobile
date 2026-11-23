@@ -36,6 +36,15 @@
     <string name="product_size_guide">Bảng quy đổi size</string>
     <string name="product_desc_title">Mô tả chi tiết</string>
     <string name="product_reviews_title">Đánh giá từ runner</string>
+    <string name="product_tab_desc">Mô tả</string>
+    <string name="product_tab_specs">Thông số chi tiết</string>
+    <string name="product_tab_return">Quy định đổi trả</string>
+    <string name="product_tab_reviews">Đánh giá</string>
+    <string name="product_return_policy_title">Chính sách đổi trả &amp; bảo hành</string>
+    <string name="product_return_policy_time">• Đổi size / đổi mẫu trong vòng 7 ngày kể từ ngày nhận hàng.</string>
+    <string name="product_return_policy_condition">• Sản phẩm còn nguyên tem mác, hộp giày và chưa sử dụng chạy ngoài trời (chỉ thử trên nền sạch trong nhà).</string>
+    <string name="product_return_policy_shipping">• Miễn phí ship đổi trả 100% nếu sản phẩm lỗi từ nhà sản xuất hoặc shop giao sai mẫu/size.</string>
+    <string name="product_return_policy_warranty">• Bảo hành keo và đế chính hãng trong 6 tháng tại hệ thống Shoes Store.</string>
     <string name="product_add_to_cart">Thêm vào giỏ</string>
     <string name="product_buy_now">Mua ngay</string>
 
@@ -72,4 +81,11 @@
     <string name="profile_edit_title">Chỉnh sửa hồ sơ chạy bộ</string>
     <string name="profile_address_title">Sổ địa chỉ giao hàng</string>
     <string name="profile_save">Lưu thay đổi</string>
+    <string name="profile_change_avatar">Đổi ảnh đại diện</string>
+    <string name="profile_avatar_from_url">Nhập link ảnh (URL)</string>
+    <string name="profile_avatar_url_hint">Dán link ảnh (https://...)</string>
+    <string name="profile_menu_about">Giới thiệu cửa hàng</string>
+    <string name="profile_menu_terms">Điều khoản &amp; Chính sách</string>
+    <string name="profile_about_title">Giới thiệu</string>
+    <string name="profile_terms_title">Điều khoản &amp; Chính sách</string>
 </resources>

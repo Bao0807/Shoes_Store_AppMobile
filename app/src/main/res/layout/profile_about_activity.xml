@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/about_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_surface"
+    android:orientation="vertical">
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_screen"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="12dp">
+
+        <ImageButton
+            android:id="@+id/about_back_btn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_back"
+            app:tint="@color/text_primary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:fontFamily="sans-serif-bold"
+            android:text="@string/profile_about_title"
+            android:textColor="@color/text_primary"
+            android:textSize="19sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider_light" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Brand Hero Card (Reserved Logo Slot) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_outline"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <!-- TODO: Thay android:src của about_brand_logo bằng logo thương hiệu chính thức sau này -->
+                <FrameLayout
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:background="@drawable/bg_stepper_box"
+                    android:backgroundTint="@color/brand_accent_soft">
+
+                    <ImageView
+                        android:id="@+id/about_brand_logo"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/app_name"
+                        android:src="@drawable/ic_runner"
+                        app:tint="@color/brand_accent" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|center_horizontal"
+                        android:layout_marginBottom="6dp"
+                        android:fontFamily="sans-serif-bold"
+                        android:letterSpacing="0.08"
+                        android:text="LOGO"
+                        android:textColor="@color/brand_accent_dark"
+                        android:textSize="9sp" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="@string/app_name"
+                    android:textColor="@color/text_primary"
+                    android:textSize="22sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:text="Đồng hành cùng từng sải bước của runner Việt"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_badge_pill"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:paddingVertical="6dp"
+                        android:text="100% Chính hãng"
+                        android:textColor="@color/text_primary"
+                        android:textSize="11.5sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_badge_pill"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:paddingVertical="6dp"
+                        android:text="3 Chi nhánh"
+                        android:textColor="@color/text_primary"
+                        android:textSize="11.5sp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_badge_pill"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:paddingVertical="6dp"
+                        android:text="15.000+ Runner"
+                        android:textColor="@color/text_primary"
+                        android:textSize="11.5sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Brand Story Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="Câu chuyện thương hiệu"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="Shoes Store được thành lập từ niềm đam mê chạy bộ thuần khiết với mong muốn mang đến cho cộng đồng runner Việt Nam những đôi giày chính hãng phù hợp nhất với từng dáng chân, tốc độ và mục tiêu chinh phục."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="Tại đây, bạn dễ dàng tìm thấy đầy đủ các dòng giày từ Daily Trainer êm ái cho những buổi chạy hằng ngày, Tempo linh hoạt, Trail bám địa hình đến siêu giày Carbon Race Day từ Nike, ASICS, HOKA, Adidas, Saucony và Brooks."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+            <!-- Highlights Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="Vì sao runner chọn Shoes Store?"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="6dp"
+                    android:text="• Cam kết 100% hàng chính hãng, đầy đủ hộp và hóa đơn.\n• Tư vấn chọn size và dòng giày chuẩn theo cân nặng, cự ly và kiểu tiếp đất.\n• Đổi size miễn phí trong 7 ngày và bảo hành keo đế 6 tháng.\n• Kết nối cộng đồng chạy bộ cuối tuần cùng nhiều ưu đãi thành viên."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+            <!-- Branches Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="Hệ thống chi nhánh"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="1. Chi nhánh Quận 3 (Flagship Store)"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="128 Nguyễn Thị Minh Khai, P. Võ Thị Sáu, Q.3, TP.HCM\nMở cửa: 08:30 – 21:30 hằng ngày"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12.5sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="10dp"
+                    android:background="@color/divider_light" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="2. Chi nhánh Tân Bình"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="364 Cộng Hòa, P.13, Q. Tân Bình, TP.HCM\nMở cửa: 08:30 – 21:30 hằng ngày"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12.5sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="10dp"
+                    android:background="@color/divider_light" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="3. Chi nhánh Hà Nội"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="56 Phố Huế, Q. Hai Bà Trưng, Hà Nội\nMở cửa: 08:30 – 21:30 hằng ngày"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12.5sp" />
+            </LinearLayout>
+
+            <!-- Contact Info Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_outline"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="Liên hệ &amp; Chăm sóc khách hàng"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="6dp"
+                    android:text="Hotline: 1900 6868\nEmail: cskh@shoesstore.vn\nGiờ hỗ trợ: 08:00 – 21:30 (Thứ 2 – Chủ nhật)"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>

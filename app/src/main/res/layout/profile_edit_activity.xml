@@ -43,12 +43,73 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:clipToPadding="false"
         android:padding="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:paddingTop="4dp"
+                android:paddingBottom="20dp">
+
+                <FrameLayout
+                    android:id="@+id/edit_avatar_container"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:clickable="true"
+                    android:contentDescription="@string/profile_change_avatar"
+                    android:focusable="true">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/edit_avatar"
+                        android:layout_width="96dp"
+                        android:layout_height="96dp"
+                        android:layout_gravity="center"
+                        android:padding="2dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/img_avatar_runner"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.ShoesStore.Circle"
+                        app:strokeColor="@color/border_subtle"
+                        app:strokeWidth="1.5dp" />
+
+                    <FrameLayout
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/bg_profile_avatar_badge">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_camera"
+                            app:tint="@color/text_on_dark" />
+                    </FrameLayout>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/edit_change_avatar_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/profile_change_avatar"
+                    android:textColor="@color/brand_accent"
+                    android:textSize="13.5sp" />
+            </LinearLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"

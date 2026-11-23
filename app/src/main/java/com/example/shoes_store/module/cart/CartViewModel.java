@@ -1,32 +1,47 @@
 package com.example.shoes_store.module.cart;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
 import java.util.List;
 
 /**
- * ViewModel cho tab Giỏ hàng.
+ * ViewModel cho tab Giỏ hàng và chọn Voucher.
  */
 public class CartViewModel extends ViewModel {
 
-    public static final long VOUCHER_DISCOUNT_AMOUNT = 150_000L;
-
     private final CartRepository repository = new CartRepository();
-    private boolean voucherApplied = false;
+    @Nullable
+    private CartVoucherModel selectedVoucher;
 
     public LiveData<List<CartItemModel>> getCartItemsLiveData() {
         return repository.getCartItemsLiveData();
     }
 
-    public boolean isVoucherApplied() {
-        return voucherApplied;
+    public List<CartVoucherModel> getAvailableVouchers() {
+        return repository.getVouchers();
     }
 
-    public boolean toggleVoucher() {
-        voucherApplied = !voucherApplied;
-        return voucherApplied;
+    @Nullable
+    public CartVoucherModel getSelectedVoucher() {
+        return selectedVoucher;
+    }
+
+    public void setSelectedVoucher(@Nullable CartVoucherModel voucher) {
+        this.selectedVoucher = voucher;
+    }
+
+    public long calculateEffectiveDiscount(long subtotal) {
+        if (selectedVoucher == null) {
+            return 0L;
+        }
+        if (!selectedVoucher.isEligible(subtotal)) {
+            selectedVoucher = null;
+            return 0L;
+        }
+        return Math.min(selectedVoucher.getDiscountAmount(), subtotal);
     }
 
     public void updateQuantity(@NonNull String cartItemId, int delta) {

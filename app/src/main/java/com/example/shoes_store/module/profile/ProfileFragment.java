@@ -16,6 +16,9 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.AvatarImageHelper;
+import com.example.shoes_store.core.MockStoreHelper;
+import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.order.OrderHistoryActivity;
 import com.example.shoes_store.module.order.OrderModel;
 import com.google.android.material.imageview.ShapeableImageView;
@@ -38,7 +41,6 @@ public class ProfileFragment extends Fragment {
 
         ShapeableImageView avatarView = view.findViewById(R.id.profile_avatar);
         TextView nameView = view.findViewById(R.id.profile_name);
-        TextView emailPhoneView = view.findViewById(R.id.profile_email_phone);
         TextView runnerSummaryView = view.findViewById(R.id.profile_runner_summary);
         TextView pendingBadge = view.findViewById(R.id.badge_order_pending);
         TextView shippingBadge = view.findViewById(R.id.badge_order_shipping);
@@ -63,12 +65,21 @@ public class ProfileFragment extends Fragment {
             }
         });
 
-        view.findViewById(R.id.menu_vouchers).setOnClickListener(v ->
-                new AlertDialog.Builder(requireContext())
-                        .setTitle("Kho Voucher của bạn")
-                        .setMessage("• RUN50K: Giảm 150.000₫ cho đơn từ giỏ hàng\n• FREESHIP24: Miễn phí ship với đơn hàng trên 5.000.000₫")
-                        .setPositiveButton("Đóng", null)
-                        .show());
+        view.findViewById(R.id.menu_vouchers).setOnClickListener(v -> {
+            StringBuilder sb = new StringBuilder();
+            for (CartVoucherModel voucher : MockStoreHelper.getInstance().getVouchers()) {
+                if (sb.length() > 0) {
+                    sb.append("\n\n");
+                }
+                sb.append("• ").append(voucher.getCode()).append(" (").append(voucher.getShortBadge()).append(")\n  ")
+                        .append(voucher.getTitle()).append(" · ").append(voucher.getDescription());
+            }
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Kho Voucher của bạn")
+                    .setMessage(sb.toString())
+                    .setPositiveButton("Đóng", null)
+                    .show();
+        });
 
         view.findViewById(R.id.menu_support).setOnClickListener(v ->
                 Toast.makeText(
@@ -77,13 +88,18 @@ public class ProfileFragment extends Fragment {
                         Toast.LENGTH_LONG
                 ).show());
 
+        view.findViewById(R.id.menu_about).setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), ProfileAboutActivity.class)));
+
+        view.findViewById(R.id.menu_terms).setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), ProfileTermsActivity.class)));
+
         viewModel.getProfileLiveData().observe(getViewLifecycleOwner(), profile -> {
             if (profile == null) {
                 return;
             }
-            avatarView.setImageResource(profile.getAvatarResId());
+            AvatarImageHelper.bindAvatar(avatarView, profile);
             nameView.setText(profile.getFullName());
-            emailPhoneView.setText(profile.getEmail() + " · " + profile.getPhone());
             runnerSummaryView.setText("Size EU " + profile.getPreferredSize() + " · " + profile.getRunningGoal());
         });
 

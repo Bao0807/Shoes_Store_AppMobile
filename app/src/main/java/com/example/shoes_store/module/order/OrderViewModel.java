@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.shoes_store.module.cart.CartItemModel;
+import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
 
@@ -64,5 +65,14 @@ public class OrderViewModel extends ViewModel {
 
     public void reorder(@NonNull OrderModel order) {
         repository.reorder(order);
+    }
+
+    public List<CartVoucherModel> getVouchers() {
+        return repository.getVouchers();
+    }
+
+    @Nullable
+    public CartVoucherModel findVoucherByCode(@Nullable String code) {
+        return repository.findVoucherByCode(code);
     }
 }

@@ -59,12 +59,10 @@ public class HomeRepository {
         String queryLower = state.getQuery().trim().toLowerCase(Locale.getDefault());
 
         for (ProductModel p : source) {
-            if (!HomeFilterState.ALL.equals(state.getCategory())
-                    && !p.getCategory().equalsIgnoreCase(state.getCategory())) {
+            if (!state.isAllCategoriesSelected() && !state.isCategorySelected(p.getCategory())) {
                 continue;
             }
-            if (!HomeFilterState.ALL.equals(state.getBrand())
-                    && !p.getBrand().equalsIgnoreCase(state.getBrand())) {
+            if (!state.isAllBrandsSelected() && !state.isBrandSelected(p.getBrand())) {
                 continue;
             }
             if (p.getPrice() < state.getMinPrice() || p.getPrice() > state.getMaxPrice()) {

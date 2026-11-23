@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.shoes_store.R;
 import com.example.shoes_store.module.cart.CartItemModel;
+import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.home.HomeBannerModel;
 import com.example.shoes_store.module.notification.NotificationModel;
 import com.example.shoes_store.module.order.OrderModel;
@@ -43,6 +44,7 @@ public final class MockStoreHelper {
     private final List<OrderModel> orders = new ArrayList<>();
     private final List<ProfileAddressModel> addresses = new ArrayList<>();
     private final List<String> recentSearches = new ArrayList<>();
+    private final List<CartVoucherModel> vouchers = new ArrayList<>();
     private ProfileModel profile;
 
     private final MutableLiveData<List<ProductModel>> productsLiveData = new MutableLiveData<>();
@@ -69,6 +71,7 @@ public final class MockStoreHelper {
         seedProfileAndAddresses();
         seedOrders();
         seedRecentSearches();
+        seedVouchers();
         publishAll();
     }
 
@@ -777,13 +780,15 @@ public final class MockStoreHelper {
             @NonNull String phone,
             @NonNull String email,
             @NonNull String preferredSize,
-            @NonNull String runningGoal
+            @NonNull String runningGoal,
+            @Nullable String avatarUri
     ) {
         profile.setFullName(fullName);
         profile.setPhone(phone);
         profile.setEmail(email);
         profile.setPreferredSize(preferredSize);
         profile.setRunningGoal(runningGoal);
+        profile.setAvatarUri(avatarUri);
         profileLiveData.setValue(profile);
     }
 
@@ -897,5 +902,48 @@ public final class MockStoreHelper {
         if (recentSearches.remove(query)) {
             recentSearchesLiveData.setValue(new ArrayList<>(recentSearches));
         }
+    }
+
+    private void seedVouchers() {
+        vouchers.add(new CartVoucherModel(
+                "NEWRUNNER100K",
+                "-100K",
+                "Giảm 100.000₫ cho mọi đơn giày chạy bộ",
+                "Áp dụng cho tất cả đơn hàng",
+                100_000L,
+                0L,
+                "31/12/2026"
+        ));
+        vouchers.add(new CartVoucherModel(
+                "RUN150K",
+                "-150K",
+                "Ưu đãi chạy bộ cuối tuần giảm 150.000₫",
+                "Đơn tối thiểu 2.000.000₫",
+                150_000L,
+                2_000_000L,
+                "30/11/2026"
+        ));
+        vouchers.add(new CartVoucherModel(
+                "MARATHON350K",
+                "-350K",
+                "Trợ giá dòng Race & Marathon 350.000₫",
+                "Đơn tối thiểu 5.000.000₫",
+                350_000L,
+                5_000_000L,
+                "15/12/2026"
+        ));
+        vouchers.add(new CartVoucherModel(
+                "PRO500K",
+                "-500K",
+                "Ưu đãi đơn cao cấp giảm ngay 500.000₫",
+                "Đơn tối thiểu 9.000.000₫",
+                500_000L,
+                9_000_000L,
+                "31/12/2026"
+        ));
+    }
+
+    public List<CartVoucherModel> getVouchers() {
+        return new ArrayList<>(vouchers);
     }
 }
