@@ -3,22 +3,32 @@ package com.example.shoes_store.module.wishlist;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 
-import com.example.shoes_store.core.MockStoreHelper;
+import com.example.shoes_store.core.FirebaseProviderHelper;
+import com.example.shoes_store.core.FirestoreStoreHelper;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.product.ProductModel;
+import com.example.shoes_store.module.product.ProductVariantModel;
+import com.example.shoes_store.module.profile.ProfileModel;
+import com.google.firebase.firestore.DocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Repository cho màn Yêu thích.
+ * Repository cho màn Yêu thích đọc/ghi từ Cloud Firestore.
  */
 public class WishlistRepository {
 
-    private final MockStoreHelper store = MockStoreHelper.getInstance();
+    private final FirestoreStoreHelper store = FirestoreStoreHelper.getInstance();
+    private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
 
     public LiveData<Set<String>> getFavoriteIdsLiveData() {
         return store.getFavoriteIdsLiveData();
+    }
+
+    public LiveData<List<ProductModel>> getProductsLiveData() {
+        return store.getProductsLiveData();
     }
 
     public List<ProductModel> getFavoriteProducts(Set<String> favoriteIds, String category) {
@@ -44,19 +54,55 @@ public class WishlistRepository {
         }
     }
 
-    public String addQuickToCart(@NonNull ProductModel product) {
-        String preferred = store.getProfile().getPreferredSize();
-        String chosenSize = preferred;
-        if (product.getOutOfStockSizes().contains(preferred)) {
-            for (String s : product.getAllSizes()) {
-                if (!product.getOutOfStockSizes().contains(s)) {
-                    chosenSize = s;
-                    break;
-                }
-            }
-        }
-        String color = product.getColorNames().isEmpty() ? "Mặc định" : product.getColorNames().get(0);
-        store.addToCart(product, chosenSize, color, 1);
-        return chosenSize;
+    public void addQuickToCart(@NonNull ProductModel product, @NonNull ResourceCallback<String> callback) {
+        ProfileModel profile = store.getProfile();
+        String preferred = profile != null ? profile.getPreferredSize() : "42";
+
+        provider.getFirestore()
+                .collection(FirebaseProviderHelper.COL_PRODUCTS)
+                .document(product.getId())
+                .collection(FirebaseProviderHelper.SUB_VARIANTS)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    List<ProductVariantModel> variants = new ArrayList<>();
+                    for (DocumentSnapshot doc : snap.getDocuments()) {
+                        variants.add(FirestoreStoreHelper.mapVariant(doc, product.getId()));
+                    }
+                    product.setVariants(variants);
+
+                    ProductVariantModel chosen = null;
+                    for (ProductVariantModel v : variants) {
+                        if (preferred.equalsIgnoreCase(v.getSize()) && v.isInStock()) {
+                            chosen = v;
+                            break;
+                        }
+                    }
+                    if (chosen == null) {
+                        for (ProductVariantModel v : variants) {
+                            if (v.isInStock()) {
+                                chosen = v;
+                                break;
+                            }
+                        }
+                    }
+                    if (chosen == null) {
+                        callback.onError("Mẫu giày này hiện đang hết hàng");
+                        return;
+                    }
+                    boolean added = store.addToCartWithinStock(
+                            product,
+                            chosen.getVariantId(),
+                            chosen.getSize(),
+                            chosen.getColorName(),
+                            1,
+                            chosen.getStockQty()
+                    );
+                    if (!added) {
+                        callback.onError("Giỏ hàng đã đạt tối đa tồn kho (" + chosen.getStockQty() + " đôi)");
+                        return;
+                    }
+                    callback.onSuccess(chosen.getSize());
+                })
+                .addOnFailureListener(e -> callback.onError("Không thể kiểm tra tồn kho, vui lòng thử lại"));
     }
 }

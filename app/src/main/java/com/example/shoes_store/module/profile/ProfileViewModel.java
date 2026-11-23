@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.order.OrderModel;
 
 import java.util.List;
@@ -26,6 +27,10 @@ public class ProfileViewModel extends ViewModel {
 
     public LiveData<List<ProfileAddressModel>> getAddressesLiveData() {
         return repository.getAddressesLiveData();
+    }
+
+    public List<CartVoucherModel> getVouchers() {
+        return repository.getVouchers();
     }
 
     public void updateProfile(

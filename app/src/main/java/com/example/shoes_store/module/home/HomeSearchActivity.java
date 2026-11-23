@@ -18,7 +18,9 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.core.UiInsetHelper;
+import com.example.shoes_store.module.auth.AuthLoginActivity;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.example.shoes_store.module.product.ProductModel;
 import com.google.android.material.chip.Chip;
@@ -156,6 +158,11 @@ public class HomeSearchActivity extends AppCompatActivity {
 
             @Override
             public void onFavoriteToggle(ProductModel product) {
+                if (!FirebaseProviderHelper.getInstance().isSignedIn()) {
+                    Toast.makeText(HomeSearchActivity.this, R.string.auth_login_required, Toast.LENGTH_SHORT).show();
+                    AuthLoginActivity.open(HomeSearchActivity.this);
+                    return;
+                }
                 boolean added = viewModel.toggleFavorite(product.getId());
                 Toast.makeText(
                         HomeSearchActivity.this,

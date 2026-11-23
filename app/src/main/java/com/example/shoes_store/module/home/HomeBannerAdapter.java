@@ -10,7 +10,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.RemoteImageHelper;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -22,12 +24,22 @@ public class HomeBannerAdapter extends RecyclerView.Adapter<HomeBannerAdapter.Ba
         void onBannerClick(HomeBannerModel banner);
     }
 
-    private final List<HomeBannerModel> items;
+    private final List<HomeBannerModel> items = new ArrayList<>();
     private final OnBannerClickListener listener;
 
-    public HomeBannerAdapter(List<HomeBannerModel> items, OnBannerClickListener listener) {
-        this.items = items;
+    public HomeBannerAdapter(List<HomeBannerModel> initialItems, OnBannerClickListener listener) {
+        if (initialItems != null) {
+            items.addAll(initialItems);
+        }
         this.listener = listener;
+    }
+
+    public void submitBanners(List<HomeBannerModel> newItems) {
+        items.clear();
+        if (newItems != null) {
+            items.addAll(newItems);
+        }
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -41,7 +53,7 @@ public class HomeBannerAdapter extends RecyclerView.Adapter<HomeBannerAdapter.Ba
     @Override
     public void onBindViewHolder(@NonNull BannerViewHolder holder, int position) {
         HomeBannerModel item = items.get(position);
-        holder.imageView.setImageResource(item.getImageResId());
+        RemoteImageHelper.bindImage(holder.imageView, item.getImageUrl(), item.getImageResId());
         holder.badgeView.setText(item.getBadge());
         holder.titleView.setText(item.getTitle());
         holder.subtitleView.setText(item.getSubtitle());

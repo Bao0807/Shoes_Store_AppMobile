@@ -1,6 +1,8 @@
 package com.example.shoes_store.module.profile;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,14 +19,16 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AvatarImageHelper;
-import com.example.shoes_store.core.MockStoreHelper;
+import com.example.shoes_store.module.auth.AuthRepository;
 import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.order.OrderHistoryActivity;
 import com.example.shoes_store.module.order.OrderModel;
 import com.google.android.material.imageview.ShapeableImageView;
 
+import java.util.List;
+
 /**
- * Tab 5 - Tài khoản & Hồ sơ chạy bộ (chưa có Đăng nhập/Đăng xuất).
+ * Tab 5 - Tài khoản & Hồ sơ chạy bộ đồng bộ với Firebase Authentication và Cloud Firestore.
  */
 public class ProfileFragment extends Fragment {
 
@@ -66,33 +70,68 @@ public class ProfileFragment extends Fragment {
         });
 
         view.findViewById(R.id.menu_vouchers).setOnClickListener(v -> {
-            StringBuilder sb = new StringBuilder();
-            for (CartVoucherModel voucher : MockStoreHelper.getInstance().getVouchers()) {
-                if (sb.length() > 0) {
-                    sb.append("\n\n");
+            List<CartVoucherModel> vouchers = viewModel.getVouchers();
+            String message;
+            if (vouchers == null || vouchers.isEmpty()) {
+                message = "Hiện chưa có mã giảm giá khả dụng";
+            } else {
+                StringBuilder sb = new StringBuilder();
+                for (CartVoucherModel voucher : vouchers) {
+                    if (sb.length() > 0) {
+                        sb.append("\n\n");
+                    }
+                    sb.append("• ").append(voucher.getCode()).append(" (").append(voucher.getShortBadge()).append(")\n  ")
+                            .append(voucher.getTitle()).append(" · ").append(voucher.getDescription());
+                    if (voucher.getUsageLimit() > 0) {
+                        int remaining = Math.max(0, voucher.getUsageLimit() - voucher.getUsedCount());
+                        sb.append("\n  Còn ").append(remaining).append("/").append(voucher.getUsageLimit()).append(" lượt");
+                    }
+                    if (!voucher.getExpiryDate().isEmpty()) {
+                        sb.append(voucher.getUsageLimit() > 0 ? " · " : "\n  ")
+                                .append("HSD: ").append(voucher.getExpiryDate());
+                    }
                 }
-                sb.append("• ").append(voucher.getCode()).append(" (").append(voucher.getShortBadge()).append(")\n  ")
-                        .append(voucher.getTitle()).append(" · ").append(voucher.getDescription());
+                message = sb.toString();
             }
             new AlertDialog.Builder(requireContext())
                     .setTitle("Kho Voucher của bạn")
-                    .setMessage(sb.toString())
+                    .setMessage(message)
                     .setPositiveButton("Đóng", null)
                     .show();
         });
 
-        view.findViewById(R.id.menu_support).setOnClickListener(v ->
+        view.findViewById(R.id.menu_support).setOnClickListener(v -> {
+            try {
+                Intent dialIntent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:19006868"));
+                startActivity(dialIntent);
+            } catch (ActivityNotFoundException e) {
                 Toast.makeText(
                         requireContext(),
                         "Hotline tư vấn chọn giày chạy: 1900 6868 (8:00 - 21:00)",
                         Toast.LENGTH_LONG
-                ).show());
+                ).show();
+            }
+        });
 
         view.findViewById(R.id.menu_about).setOnClickListener(v ->
                 startActivity(new Intent(requireContext(), ProfileAboutActivity.class)));
 
         view.findViewById(R.id.menu_terms).setOnClickListener(v ->
                 startActivity(new Intent(requireContext(), ProfileTermsActivity.class)));
+
+        view.findViewById(R.id.menu_logout).setOnClickListener(v ->
+                new AlertDialog.Builder(requireContext())
+                        .setTitle(R.string.auth_logout)
+                        .setMessage("Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại?")
+                        .setNegativeButton("Hủy", null)
+                        .setPositiveButton(R.string.auth_logout, (dialog, which) -> {
+                            new AuthRepository().logout();
+                            Toast.makeText(requireContext(), "Đã đăng xuất", Toast.LENGTH_SHORT).show();
+                            if (getActivity() instanceof MainActivity) {
+                                ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+                            }
+                        })
+                        .show());
 
         viewModel.getProfileLiveData().observe(getViewLifecycleOwner(), profile -> {
             if (profile == null) {

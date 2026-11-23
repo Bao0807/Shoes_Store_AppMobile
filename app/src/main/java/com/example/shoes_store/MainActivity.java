@@ -11,6 +11,7 @@ import android.view.animation.OvershootInterpolator;
 import android.view.animation.PathInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,8 +24,10 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
-import com.example.shoes_store.core.MockStoreHelper;
+import com.example.shoes_store.core.FirebaseProviderHelper;
+import com.example.shoes_store.core.FirestoreStoreHelper;
 import com.example.shoes_store.core.UiInsetHelper;
+import com.example.shoes_store.module.auth.AuthLoginActivity;
 import com.example.shoes_store.module.cart.CartFragment;
 import com.example.shoes_store.module.home.HomeFragment;
 import com.example.shoes_store.module.notification.NotificationFragment;
@@ -151,6 +154,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void selectTab(int menuItemId, boolean animate) {
+        if (menuItemId != R.id.nav_home && !FirebaseProviderHelper.getInstance().isSignedIn()) {
+            Toast.makeText(this, R.string.auth_login_required, Toast.LENGTH_SHORT).show();
+            AuthLoginActivity.openForTab(this, menuItemId);
+            return;
+        }
+
         int targetIndex = indexForMenuId(menuItemId);
         String targetTag = tagForMenuId(menuItemId);
         boolean fragmentMissing = getSupportFragmentManager().findFragmentByTag(targetTag) == null;
@@ -285,9 +294,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void observeBadges() {
-        MockStoreHelper store = MockStoreHelper.getInstance();
+        FirestoreStoreHelper store = FirestoreStoreHelper.getInstance();
         store.getCartTotalCountLiveData().observe(this, count -> updateBadgeView(cartBadgeView, count));
         store.getUnreadNotificationCountLiveData().observe(this, unread -> updateBadgeView(notificationBadgeView, unread));
+        store.getSignedInLiveData().observe(this, signedIn -> {
+            if (Boolean.FALSE.equals(signedIn) && !TAG_HOME.equals(activeTag)) {
+                selectTab(R.id.nav_home, false);
+            }
+        });
     }
 
     private void updateBadgeView(TextView badgeView, Integer count) {

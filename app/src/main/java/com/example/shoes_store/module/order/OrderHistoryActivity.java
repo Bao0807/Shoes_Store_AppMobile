@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.core.UiInsetHelper;
 import com.google.android.material.tabs.TabLayout;
 
@@ -53,23 +55,52 @@ public class OrderHistoryActivity extends AppCompatActivity {
             @Override
             public void onOrderClick(OrderModel order) {
                 Intent intent = new Intent(OrderHistoryActivity.this, OrderDetailActivity.class);
+                intent.putExtra(OrderDetailActivity.EXTRA_ORDER_ID, order.getOrderId());
                 intent.putExtra(OrderDetailActivity.EXTRA_ORDER_CODE, order.getOrderCode());
                 startActivity(intent);
             }
 
             @Override
             public void onOrderActionClick(OrderModel order) {
-                if (order.getStatus() == OrderModel.Status.PENDING) {
-                    viewModel.cancelOrder(order.getOrderCode());
-                    Toast.makeText(OrderHistoryActivity.this, "Đã hủy đơn #" + order.getOrderCode(), Toast.LENGTH_SHORT).show();
+                if (order.canCancel()) {
+                    new AlertDialog.Builder(OrderHistoryActivity.this)
+                            .setTitle("Hủy đơn #" + order.getOrderCode())
+                            .setMessage("Bạn muốn hủy đơn hàng này và hoàn lại số lượng về kho?")
+                            .setNegativeButton("Không", null)
+                            .setPositiveButton("Hủy đơn", (d, w) ->
+                                    viewModel.cancelOrder(order.getOrderId(), new ResourceCallback<Void>() {
+                                        @Override
+                                        public void onSuccess(Void data) {
+                                            Toast.makeText(
+                                                    OrderHistoryActivity.this,
+                                                    "Đã hủy đơn #" + order.getOrderCode(),
+                                                    Toast.LENGTH_SHORT
+                                            ).show();
+                                        }
+
+                                        @Override
+                                        public void onError(String message) {
+                                            Toast.makeText(OrderHistoryActivity.this, message, Toast.LENGTH_LONG).show();
+                                        }
+                                    }))
+                            .show();
                 } else {
-                    viewModel.reorder(order);
-                    Toast.makeText(OrderHistoryActivity.this, "Đã thêm lại sản phẩm vào Giỏ hàng", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(OrderHistoryActivity.this, MainActivity.class);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                    intent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_cart);
-                    startActivity(intent);
-                    finish();
+                    viewModel.reorder(order, new ResourceCallback<Integer>() {
+                        @Override
+                        public void onSuccess(Integer added) {
+                            Toast.makeText(OrderHistoryActivity.this, "Đã thêm lại " + added + " mẫu vào Giỏ hàng", Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(OrderHistoryActivity.this, MainActivity.class);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                            intent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_cart);
+                            startActivity(intent);
+                            finish();
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            Toast.makeText(OrderHistoryActivity.this, message, Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
             }
         });

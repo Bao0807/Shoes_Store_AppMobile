@@ -70,10 +70,10 @@ public class CartVoucherBottomSheet extends BottomSheetDialogFragment {
         CartVoucherAdapter[] adapterHolder = new CartVoucherAdapter[1];
         adapterHolder[0] = new CartVoucherAdapter(vouchers, subtotal, initialCode, voucher -> {
             if (!voucher.isEligible(subtotal)) {
-                long missing = Math.max(0L, voucher.getMinOrderAmount() - subtotal);
+                String reason = voucher.getIneligibleReason(subtotal);
                 Toast.makeText(
                         requireContext(),
-                        "Cần mua thêm " + CurrencyFormatUtil.formatVnd(missing) + " để dùng mã " + voucher.getCode(),
+                        reason != null ? reason : "Mã giảm giá không khả dụng",
                         Toast.LENGTH_SHORT
                 ).show();
                 return;
@@ -100,10 +100,10 @@ public class CartVoucherBottomSheet extends BottomSheetDialogFragment {
                 return;
             }
             if (!matched.isEligible(subtotal)) {
-                long missing = Math.max(0L, matched.getMinOrderAmount() - subtotal);
+                String reason = matched.getIneligibleReason(subtotal);
                 Toast.makeText(
                         requireContext(),
-                        "Đơn chưa đủ điều kiện, cần thêm " + CurrencyFormatUtil.formatVnd(missing),
+                        reason != null ? reason : "Mã giảm giá không khả dụng",
                         Toast.LENGTH_SHORT
                 ).show();
                 return;

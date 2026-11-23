@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.RemoteImageHelper;
 import com.example.shoes_store.module.product.ProductModel;
 
 import java.util.ArrayList;
@@ -68,7 +69,7 @@ public class HomeShoeAdapter extends RecyclerView.Adapter<HomeShoeAdapter.ShoeVi
     @Override
     public void onBindViewHolder(@NonNull ShoeViewHolder holder, int position) {
         ProductModel item = items.get(position);
-        holder.shoeImage.setImageResource(item.getImageResId());
+        RemoteImageHelper.bindImage(holder.shoeImage, item.getThumbnailUrl(), item.getImageResId());
         CategoryStyleHelper.applyCategoryBadge(holder.categoryBadge, item.getCategory());
 
         if (item.hasDiscount()) {
@@ -86,7 +87,8 @@ public class HomeShoeAdapter extends RecyclerView.Adapter<HomeShoeAdapter.ShoeVi
 
         holder.brandText.setText(item.getBrand());
         holder.nameText.setText(item.getName());
-        holder.ratingText.setText(String.format(Locale.US, "%.1f", item.getRating()));
+        double displayRating = item.getReviewCount() <= 0 ? 0.0 : item.getRating();
+        holder.ratingText.setText(String.format(Locale.US, "%.1f", displayRating));
         holder.reviewCountText.setText("(" + item.getReviewCount() + ")");
         holder.priceText.setText(CurrencyFormatUtil.formatVnd(item.getPrice()));
 

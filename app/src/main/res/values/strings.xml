@@ -88,4 +88,15 @@
     <string name="profile_menu_terms">Điều khoản &amp; Chính sách</string>
     <string name="profile_about_title">Giới thiệu</string>
     <string name="profile_terms_title">Điều khoản &amp; Chính sách</string>
+
+    <!-- Auth -->
+    <string name="auth_login_title">Đăng nhập</string>
+    <string name="auth_login_subtitle">Đăng nhập để đồng bộ giỏ hàng, yêu thích và theo dõi đơn giày chạy bộ</string>
+    <string name="auth_register_title">Đăng ký tài khoản</string>
+    <string name="auth_register_subtitle">Tạo hồ sơ runner để nhận ưu đãi và theo dõi đơn hàng dễ dàng</string>
+    <string name="auth_forgot_password">Quên mật khẩu?</string>
+    <string name="auth_login_btn">Đăng nhập</string>
+    <string name="auth_register_btn">Tạo tài khoản</string>
+    <string name="auth_logout">Đăng xuất</string>
+    <string name="auth_login_required">Vui lòng đăng nhập để tiếp tục</string>
 </resources>

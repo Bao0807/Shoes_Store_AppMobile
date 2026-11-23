@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.RemoteImageHelper;
 import com.google.android.material.checkbox.MaterialCheckBox;
 
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
     @Override
     public void onBindViewHolder(@NonNull CartViewHolder holder, int position) {
         CartItemModel item = items.get(position);
-        holder.imageView.setImageResource(item.getProduct().getImageResId());
+        RemoteImageHelper.bindImage(holder.imageView, item.getProduct().getThumbnailUrl(), item.getProduct().getImageResId());
         holder.brandText.setText(item.getProduct().getBrand());
         holder.nameText.setText(item.getProduct().getName());
         holder.variantText.setText("EU " + item.getSize() + " · " + item.getColorName());

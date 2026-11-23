@@ -3,25 +3,39 @@ package com.example.shoes_store.module.product;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.RemoteImageHelper;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Adapter hiển thị danh sách đánh giá từ runner.
+ * Adapter hiển thị danh sách đánh giá từ người mua thực.
  */
 public class ProductReviewAdapter extends RecyclerView.Adapter<ProductReviewAdapter.ReviewViewHolder> {
 
-    private final List<ProductReviewModel> reviews;
+    private final List<ProductReviewModel> reviews = new ArrayList<>();
 
-    public ProductReviewAdapter(List<ProductReviewModel> reviews) {
-        this.reviews = reviews;
+    public ProductReviewAdapter(@Nullable List<ProductReviewModel> initialReviews) {
+        if (initialReviews != null) {
+            reviews.addAll(initialReviews);
+        }
+    }
+
+    public void submitReviews(@Nullable List<ProductReviewModel> newReviews) {
+        reviews.clear();
+        if (newReviews != null) {
+            reviews.addAll(newReviews);
+        }
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -35,6 +49,7 @@ public class ProductReviewAdapter extends RecyclerView.Adapter<ProductReviewAdap
     @Override
     public void onBindViewHolder(@NonNull ReviewViewHolder holder, int position) {
         ProductReviewModel item = reviews.get(position);
+        RemoteImageHelper.bindImage(holder.avatarView, item.getReviewerAvatarUrl(), R.drawable.img_avatar_runner);
         holder.authorText.setText(item.getReviewerName());
         holder.ratingText.setText(String.format(Locale.US, "%.1f", item.getRating()));
         holder.dateText.setText(item.getDate());
@@ -43,10 +58,11 @@ public class ProductReviewAdapter extends RecyclerView.Adapter<ProductReviewAdap
 
     @Override
     public int getItemCount() {
-        return reviews != null ? reviews.size() : 0;
+        return reviews.size();
     }
 
     static class ReviewViewHolder extends RecyclerView.ViewHolder {
+        final ImageView avatarView;
         final TextView authorText;
         final TextView ratingText;
         final TextView dateText;
@@ -54,6 +70,7 @@ public class ProductReviewAdapter extends RecyclerView.Adapter<ProductReviewAdap
 
         ReviewViewHolder(@NonNull View itemView) {
             super(itemView);
+            avatarView = itemView.findViewById(R.id.review_avatar);
             authorText = itemView.findViewById(R.id.review_author);
             ratingText = itemView.findViewById(R.id.review_rating);
             dateText = itemView.findViewById(R.id.review_date);

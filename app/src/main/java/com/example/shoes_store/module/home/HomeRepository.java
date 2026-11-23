@@ -3,23 +3,29 @@ package com.example.shoes_store.module.home;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 
-import com.example.shoes_store.core.MockStoreHelper;
+import com.example.shoes_store.core.FirestoreStoreHelper;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileModel;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 /**
- * Repository cho màn Trang chủ và Tìm kiếm/Lọc sản phẩm.
+ * Repository cho màn Trang chủ và Tìm kiếm/Lọc sản phẩm đọc từ Cloud Firestore.
  */
 public class HomeRepository {
 
-    private final MockStoreHelper store = MockStoreHelper.getInstance();
+    private final FirestoreStoreHelper store = FirestoreStoreHelper.getInstance();
+
+    public LiveData<List<HomeBannerModel>> getBannersLiveData() {
+        return store.getBannersLiveData();
+    }
 
     public LiveData<List<ProductModel>> getProductsLiveData() {
         return store.getProductsLiveData();
@@ -37,8 +43,8 @@ public class HomeRepository {
         return store.getRecentSearchesLiveData();
     }
 
-    public List<HomeBannerModel> getBanners() {
-        return store.getBanners();
+    public void refreshPublicCatalog() {
+        store.refreshPublicCatalog();
     }
 
     public boolean toggleFavorite(@NonNull String productId) {
@@ -51,6 +57,42 @@ public class HomeRepository {
 
     public void removeRecentSearch(@NonNull String query) {
         store.removeRecentSearch(query);
+    }
+
+    @NonNull
+    public List<String> getAvailableCategories() {
+        Set<String> seen = new LinkedHashSet<>();
+        seen.add(HomeFilterState.ALL);
+        List<ProductModel> products = store.getAllProducts();
+        if (products.isEmpty()) {
+            seen.addAll(Arrays.asList("Daily", "Race", "Tempo", "Trail", "Recovery"));
+        } else {
+            for (ProductModel p : products) {
+                String cat = p.getCategory().trim();
+                if (!cat.isEmpty()) {
+                    seen.add(cat);
+                }
+            }
+        }
+        return new ArrayList<>(seen);
+    }
+
+    @NonNull
+    public List<String> getAvailableBrands() {
+        Set<String> seen = new LinkedHashSet<>();
+        seen.add(HomeFilterState.ALL);
+        List<ProductModel> products = store.getAllProducts();
+        if (products.isEmpty()) {
+            seen.addAll(Arrays.asList("Nike", "ASICS", "HOKA", "Adidas", "Saucony", "Brooks"));
+        } else {
+            for (ProductModel p : products) {
+                String brand = p.getBrand().trim();
+                if (!brand.isEmpty()) {
+                    seen.add(brand);
+                }
+            }
+        }
+        return new ArrayList<>(seen);
     }
 
     public List<ProductModel> filterAndSort(@NonNull HomeFilterState state) {

@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.CurrencyFormatUtil;
-import com.example.shoes_store.module.cart.CartItemModel;
+import com.example.shoes_store.core.RemoteImageHelper;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
@@ -63,11 +63,12 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
         holder.itemCountText.setText(order.getTotalQuantity() + " sản phẩm");
         holder.totalText.setText(CurrencyFormatUtil.formatVnd(order.getTotal()));
 
-        if (!order.getItems().isEmpty()) {
-            CartItemModel first = order.getItems().get(0);
-            holder.shoeImage.setImageResource(first.getProduct().getImageResId());
-            holder.shoeName.setText(first.getProduct().getBrand() + " " + first.getProduct().getName());
-            String extra = order.getItems().size() > 1 ? " (+" + (order.getItems().size() - 1) + " mẫu khác)" : "";
+        List<OrderItemModel> orderItems = order.getOrderItems();
+        if (!orderItems.isEmpty()) {
+            OrderItemModel first = orderItems.get(0);
+            RemoteImageHelper.bindImage(holder.shoeImage, first.getThumbnailUrl(), first.getFallbackImageResId());
+            holder.shoeName.setText(first.getProductName());
+            String extra = orderItems.size() > 1 ? " (+" + (orderItems.size() - 1) + " mẫu khác)" : "";
             holder.shoeMeta.setText("EU " + first.getSize() + " · " + first.getColorName() + " · x" + first.getQuantity() + extra);
         }
 

@@ -11,19 +11,33 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.RemoteImageHelper;
 import com.example.shoes_store.module.cart.CartItemModel;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Adapter rút gọn hiển thị từng đôi giày trong Thanh toán và Chi tiết đơn hàng.
+ * Adapter hiển thị từng đôi giày trong Thanh toán và Chi tiết đơn hàng.
  */
 public class OrderCheckoutItemAdapter extends RecyclerView.Adapter<OrderCheckoutItemAdapter.ItemViewHolder> {
 
-    private final List<CartItemModel> items;
+    private final List<OrderItemModel> items = new ArrayList<>();
 
-    public OrderCheckoutItemAdapter(List<CartItemModel> items) {
-        this.items = items;
+    public OrderCheckoutItemAdapter(List<CartItemModel> cartItems) {
+        if (cartItems != null) {
+            for (CartItemModel item : cartItems) {
+                items.add(OrderItemModel.fromCartItem(item));
+            }
+        }
+    }
+
+    public static OrderCheckoutItemAdapter fromOrderItems(List<OrderItemModel> orderItems) {
+        OrderCheckoutItemAdapter adapter = new OrderCheckoutItemAdapter(null);
+        if (orderItems != null) {
+            adapter.items.addAll(orderItems);
+        }
+        return adapter;
     }
 
     @NonNull
@@ -36,16 +50,16 @@ public class OrderCheckoutItemAdapter extends RecyclerView.Adapter<OrderCheckout
 
     @Override
     public void onBindViewHolder(@NonNull ItemViewHolder holder, int position) {
-        CartItemModel item = items.get(position);
-        holder.imageView.setImageResource(item.getProduct().getImageResId());
-        holder.nameText.setText(item.getProduct().getBrand() + " " + item.getProduct().getName());
+        OrderItemModel item = items.get(position);
+        RemoteImageHelper.bindImage(holder.imageView, item.getThumbnailUrl(), item.getFallbackImageResId());
+        holder.nameText.setText(item.getProductName());
         holder.metaText.setText("EU " + item.getSize() + " · " + item.getColorName() + " · x" + item.getQuantity());
         holder.priceText.setText(CurrencyFormatUtil.formatVnd(item.getLineTotal()));
     }
 
     @Override
     public int getItemCount() {
-        return items != null ? items.size() : 0;
+        return items.size();
     }
 
     static class ItemViewHolder extends RecyclerView.ViewHolder {

@@ -19,13 +19,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.core.UiInsetHelper;
 import com.example.shoes_store.module.cart.CartItemModel;
 import com.example.shoes_store.module.cart.CartVoucherBottomSheet;
 import com.example.shoes_store.module.cart.CartVoucherModel;
+import com.example.shoes_store.module.payment.PaymentModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileAddressActivity;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
+import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +41,7 @@ public class OrderCheckoutActivity extends AppCompatActivity {
     public static final String EXTRA_DISCOUNT_AMOUNT = "extra_discount_amount";
     public static final String EXTRA_VOUCHER_CODE = "extra_voucher_code";
     public static final String EXTRA_DIRECT_PRODUCT_ID = "extra_direct_product_id";
+    public static final String EXTRA_DIRECT_VARIANT_ID = "extra_direct_variant_id";
     public static final String EXTRA_DIRECT_SIZE = "extra_direct_size";
     public static final String EXTRA_DIRECT_COLOR = "extra_direct_color";
 
@@ -49,11 +53,14 @@ public class OrderCheckoutActivity extends AppCompatActivity {
     private ProfileAddressModel selectedAddress;
     @Nullable
     private CartVoucherModel selectedVoucher;
+    @Nullable
+    private String pendingVoucherCode;
     private boolean isDirectBuy = false;
+    private boolean isSubmitting = false;
     private long discountAmount = 0L;
     private long shippingFee = STANDARD_SHIPPING_FEE;
     private String shippingMethod = "Giao tiêu chuẩn";
-    private String paymentMethod = "Thanh toán khi nhận hàng (COD)";
+    private PaymentModel.Method paymentMethod = PaymentModel.Method.COD;
 
     private TextView addressReceiverText;
     private TextView addressDetailText;
@@ -66,6 +73,7 @@ public class OrderCheckoutActivity extends AppCompatActivity {
     private TextView discountText;
     private TextView totalText;
     private TextView bottomTotalText;
+    private MaterialButton placeOrderBtn;
 
     private final ActivityResultLauncher<Intent> pickAddressLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -103,6 +111,7 @@ public class OrderCheckoutActivity extends AppCompatActivity {
         discountText = findViewById(R.id.checkout_discount);
         totalText = findViewById(R.id.checkout_total);
         bottomTotalText = findViewById(R.id.checkout_bottom_total);
+        placeOrderBtn = findViewById(R.id.checkout_place_order_btn);
 
         findViewById(R.id.checkout_back_btn).setOnClickListener(v -> finish());
         findViewById(R.id.checkout_change_address_btn).setOnClickListener(v -> {
@@ -115,11 +124,73 @@ public class OrderCheckoutActivity extends AppCompatActivity {
         loadCheckoutData();
         selectedAddress = viewModel.getDefaultAddress();
         renderAddress();
+        observeAddresses();
+        observeVouchers();
         setupItemsRecycler();
         setupRadioGroups();
         recalculateTotals();
 
-        findViewById(R.id.checkout_place_order_btn).setOnClickListener(v -> submitOrder());
+        placeOrderBtn.setOnClickListener(v -> submitOrder());
+    }
+
+    private void observeVouchers() {
+        viewModel.getVouchersLiveData().observe(this, vouchers -> {
+            if (vouchers == null) {
+                return;
+            }
+            String targetCode = selectedVoucher != null ? selectedVoucher.getCode() : pendingVoucherCode;
+            if (targetCode == null || targetCode.trim().isEmpty()) {
+                return;
+            }
+            CartVoucherModel matched = null;
+            for (CartVoucherModel v : vouchers) {
+                if (targetCode.equalsIgnoreCase(v.getCode())) {
+                    matched = v;
+                    break;
+                }
+            }
+            selectedVoucher = matched;
+            if (matched != null) {
+                pendingVoucherCode = null;
+            } else {
+                discountAmount = 0L;
+            }
+            recalculateTotals();
+        });
+    }
+
+    private void observeAddresses() {
+        viewModel.getAddressesLiveData().observe(this, addresses -> {
+            if (addresses == null || addresses.isEmpty()) {
+                selectedAddress = null;
+                renderAddress();
+                return;
+            }
+            if (selectedAddress == null) {
+                selectedAddress = pickDefaultOrFirst(addresses);
+                renderAddress();
+                return;
+            }
+            String currentId = selectedAddress.getId();
+            ProfileAddressModel updatedMatch = null;
+            for (ProfileAddressModel item : addresses) {
+                if (currentId.equals(item.getId())) {
+                    updatedMatch = item;
+                    break;
+                }
+            }
+            selectedAddress = updatedMatch != null ? updatedMatch : pickDefaultOrFirst(addresses);
+            renderAddress();
+        });
+    }
+
+    private ProfileAddressModel pickDefaultOrFirst(List<ProfileAddressModel> addresses) {
+        for (ProfileAddressModel address : addresses) {
+            if (address.isDefaultAddress()) {
+                return address;
+            }
+        }
+        return addresses.get(0);
     }
 
     private void loadCheckoutData() {
@@ -127,22 +198,25 @@ public class OrderCheckoutActivity extends AppCompatActivity {
         if (directProductId != null) {
             isDirectBuy = true;
             ProductModel product = viewModel.getProductById(directProductId);
+            String variantId = getIntent().getStringExtra(EXTRA_DIRECT_VARIANT_ID);
             String size = getIntent().getStringExtra(EXTRA_DIRECT_SIZE);
             String color = getIntent().getStringExtra(EXTRA_DIRECT_COLOR);
             if (product != null) {
                 checkoutItems.add(new CartItemModel(
                         "direct_1",
                         product,
+                        variantId != null ? variantId : "",
                         size != null ? size : "42",
                         color != null ? color : "Mặc định",
                         1,
-                        true
+                        true,
+                        0L
                 ));
             }
         } else {
             discountAmount = getIntent().getLongExtra(EXTRA_DISCOUNT_AMOUNT, 0L);
-            String voucherCode = getIntent().getStringExtra(EXTRA_VOUCHER_CODE);
-            selectedVoucher = viewModel.findVoucherByCode(voucherCode);
+            pendingVoucherCode = getIntent().getStringExtra(EXTRA_VOUCHER_CODE);
+            selectedVoucher = viewModel.findVoucherByCode(pendingVoucherCode);
             checkoutItems.addAll(viewModel.getSelectedCartItems());
         }
 
@@ -184,11 +258,11 @@ public class OrderCheckoutActivity extends AppCompatActivity {
         RadioGroup paymentGroup = findViewById(R.id.checkout_payment_group);
         paymentGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.rb_pay_qr) {
-                paymentMethod = "Chuyển khoản QR";
+                paymentMethod = PaymentModel.Method.BANK_QR;
             } else if (checkedId == R.id.rb_pay_wallet) {
-                paymentMethod = "Ví điện tử";
+                paymentMethod = PaymentModel.Method.E_WALLET;
             } else {
-                paymentMethod = "Thanh toán khi nhận hàng (COD)";
+                paymentMethod = PaymentModel.Method.COD;
             }
         });
     }
@@ -256,36 +330,67 @@ public class OrderCheckoutActivity extends AppCompatActivity {
     }
 
     private void submitOrder() {
+        if (isSubmitting) {
+            return;
+        }
         if (selectedAddress == null) {
             Toast.makeText(this, "Vui lòng chọn địa chỉ nhận hàng", Toast.LENGTH_SHORT).show();
             return;
         }
-        OrderModel created = viewModel.placeOrder(
+        isSubmitting = true;
+        placeOrderBtn.setEnabled(false);
+        placeOrderBtn.setText("Đang xử lý...");
+
+        String voucherCode = selectedVoucher != null ? selectedVoucher.getCode() : null;
+        viewModel.placeOrder(
                 checkoutItems,
                 selectedAddress,
                 shippingMethod,
                 shippingFee,
                 paymentMethod,
+                voucherCode,
                 discountAmount,
-                !isDirectBuy
-        );
-        OrderSuccessDialog.show(this, created.getOrderCode(), new OrderSuccessDialog.OnDialogActionListener() {
-            @Override
-            public void onViewOrders() {
-                Intent intent = new Intent(OrderCheckoutActivity.this, OrderHistoryActivity.class);
-                intent.putExtra(OrderHistoryActivity.EXTRA_INITIAL_TAB, 0);
-                startActivity(intent);
-                finish();
-            }
+                !isDirectBuy,
+                new ResourceCallback<OrderModel>() {
+                    @Override
+                    public void onSuccess(OrderModel created) {
+                        isSubmitting = false;
+                        if (isFinishing() || isDestroyed()) {
+                            return;
+                        }
+                        placeOrderBtn.setEnabled(true);
+                        placeOrderBtn.setText(R.string.checkout_place_order);
+                        OrderSuccessDialog.show(OrderCheckoutActivity.this, created.getOrderCode(), new OrderSuccessDialog.OnDialogActionListener() {
+                            @Override
+                            public void onViewOrders() {
+                                Intent intent = new Intent(OrderCheckoutActivity.this, OrderHistoryActivity.class);
+                                intent.putExtra(OrderHistoryActivity.EXTRA_INITIAL_TAB, 0);
+                                startActivity(intent);
+                                finish();
+                            }
 
-            @Override
-            public void onGoHome() {
-                Intent intent = new Intent(OrderCheckoutActivity.this, MainActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                intent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_home);
-                startActivity(intent);
-                finish();
-            }
-        });
+                            @Override
+                            public void onGoHome() {
+                                Intent intent = new Intent(OrderCheckoutActivity.this, MainActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                                intent.putExtra(MainActivity.EXTRA_TARGET_TAB, R.id.nav_home);
+                                startActivity(intent);
+                                finish();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        isSubmitting = false;
+                        if (isFinishing() || isDestroyed()) {
+                            return;
+                        }
+                        placeOrderBtn.setEnabled(true);
+                        placeOrderBtn.setText(R.string.checkout_place_order);
+                        Toast.makeText(OrderCheckoutActivity.this, message, Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
     }
 }

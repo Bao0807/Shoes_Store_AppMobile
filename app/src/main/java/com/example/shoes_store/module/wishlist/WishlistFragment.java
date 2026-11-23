@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.example.shoes_store.module.product.ProductModel;
 import com.google.android.material.chip.ChipGroup;
@@ -68,8 +69,21 @@ public class WishlistFragment extends Fragment {
 
             @Override
             public void onAddToCart(ProductModel product) {
-                String size = viewModel.addQuickToCart(product);
-                Toast.makeText(requireContext(), "Đã thêm " + product.getName() + " (EU " + size + ") vào giỏ", Toast.LENGTH_SHORT).show();
+                viewModel.addQuickToCart(product, new ResourceCallback<String>() {
+                    @Override
+                    public void onSuccess(String size) {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), "Đã thêm " + product.getName() + " (EU " + size + ") vào giỏ", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
             }
         });
 
@@ -107,6 +121,8 @@ public class WishlistFragment extends Fragment {
             latestFavoriteIds = ids;
             renderFavorites();
         });
+
+        viewModel.getProductsLiveData().observe(getViewLifecycleOwner(), products -> renderFavorites());
     }
 
     private void renderFavorites() {

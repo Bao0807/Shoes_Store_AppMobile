@@ -1,5 +1,9 @@
 package com.example.shoes_store.module.notification;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +18,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.module.order.OrderDetailActivity;
+import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.google.android.material.chip.ChipGroup;
 
 import java.util.List;
@@ -44,7 +50,28 @@ public class NotificationFragment extends Fragment {
         emptyText = view.findViewById(R.id.notif_empty_text);
         ChipGroup filterChips = view.findViewById(R.id.notif_filter_chips);
 
-        adapter = new NotificationAdapter(item -> viewModel.markRead(item.getId()));
+        adapter = new NotificationAdapter(item -> {
+            viewModel.markRead(item.getId());
+            if (item.getType() == NotificationModel.Type.ORDER && !item.getTargetId().isEmpty()) {
+                Intent intent = new Intent(requireContext(), OrderDetailActivity.class);
+                intent.putExtra(OrderDetailActivity.EXTRA_ORDER_CODE, item.getTargetId());
+                startActivity(intent);
+            } else if (item.getType() == NotificationModel.Type.DROP && !item.getTargetId().isEmpty()) {
+                Intent intent = new Intent(requireContext(), ProductDetailActivity.class);
+                intent.putExtra(ProductDetailActivity.EXTRA_PRODUCT_ID, item.getTargetId());
+                startActivity(intent);
+            } else if (item.getType() == NotificationModel.Type.PROMO && !item.getTargetId().isEmpty()) {
+                ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("voucher_code", item.getTargetId()));
+                }
+                Toast.makeText(
+                        requireContext(),
+                        "Đã sao chép mã giảm giá " + item.getTargetId(),
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        });
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
 

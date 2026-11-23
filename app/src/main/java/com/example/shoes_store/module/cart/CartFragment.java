@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.order.OrderCheckoutActivity;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.google.android.material.button.MaterialButton;
@@ -80,7 +81,19 @@ public class CartFragment extends Fragment {
 
             @Override
             public void onQuantityDelta(CartItemModel item, int delta) {
-                viewModel.updateQuantity(item.getId(), delta);
+                viewModel.updateQuantity(item, delta, new ResourceCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void data) {
+                        // LiveData tự cập nhật từ Firestore
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
             }
 
             @Override
@@ -119,6 +132,10 @@ public class CartFragment extends Fragment {
         viewModel.getCartItemsLiveData().observe(getViewLifecycleOwner(), items -> {
             latestItems = items;
             adapter.submitList(items);
+            refreshSummary();
+        });
+        viewModel.getVouchersLiveData().observe(getViewLifecycleOwner(), vouchers -> {
+            viewModel.syncSelectedVoucherWithLatest(vouchers);
             refreshSummary();
         });
     }
@@ -182,7 +199,7 @@ public class CartFragment extends Fragment {
 
         selectAllCb.setOnCheckedChangeListener(null);
         selectAllCb.setChecked(allSelected);
-        selectAllCb.setOnCheckedChangeListener((buttonView, isChecked) -> viewModel.selectAll(isChecked));
+        selectAllCb.setOnCheckedChangeListener((buttonView, isChecked) -> viewModel.selectAll(latestItems, isChecked));
     }
 
     private long getSelectedSubtotal() {

@@ -5,8 +5,10 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.cart.CartItemModel;
 import com.example.shoes_store.module.cart.CartVoucherModel;
+import com.example.shoes_store.module.payment.PaymentModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
 
@@ -38,37 +40,57 @@ public class OrderViewModel extends ViewModel {
         return repository.findAddressById(addressId);
     }
 
+    public LiveData<List<ProfileAddressModel>> getAddressesLiveData() {
+        return repository.getAddressesLiveData();
+    }
+
     public LiveData<List<OrderModel>> getOrdersLiveData() {
         return repository.getOrdersLiveData();
     }
 
     @Nullable
-    public OrderModel getOrderByCode(@Nullable String orderCode) {
-        return repository.getOrderByCode(orderCode);
+    public OrderModel getOrderByCode(@Nullable String orderIdOrCode) {
+        return repository.getOrderByIdOrCode(orderIdOrCode);
     }
 
-    public OrderModel placeOrder(
+    public void placeOrder(
             @NonNull List<CartItemModel> items,
             @NonNull ProfileAddressModel address,
             @NonNull String shippingMethod,
             long shippingFee,
-            @NonNull String paymentMethod,
+            @NonNull PaymentModel.Method paymentMethod,
+            @Nullable String voucherCode,
             long discount,
-            boolean removeFromCart
+            boolean removeFromCart,
+            @NonNull ResourceCallback<OrderModel> callback
     ) {
-        return repository.placeOrder(items, address, shippingMethod, shippingFee, paymentMethod, discount, removeFromCart);
+        repository.placeOrder(
+                items,
+                address,
+                shippingMethod,
+                shippingFee,
+                paymentMethod,
+                voucherCode,
+                discount,
+                removeFromCart,
+                callback
+        );
     }
 
-    public void cancelOrder(@NonNull String orderCode) {
-        repository.cancelOrder(orderCode);
+    public void cancelOrder(@NonNull String orderId, @NonNull ResourceCallback<Void> callback) {
+        repository.cancelOrder(orderId, callback);
     }
 
-    public void reorder(@NonNull OrderModel order) {
-        repository.reorder(order);
+    public void reorder(@NonNull OrderModel order, @NonNull ResourceCallback<Integer> callback) {
+        repository.reorder(order, callback);
     }
 
     public List<CartVoucherModel> getVouchers() {
         return repository.getVouchers();
+    }
+
+    public LiveData<List<CartVoucherModel>> getVouchersLiveData() {
+        return repository.getVouchersLiveData();
     }
 
     @Nullable

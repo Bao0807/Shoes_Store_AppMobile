@@ -2,6 +2,7 @@ package com.example.shoes_store.module.home;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
@@ -18,14 +19,19 @@ public class HomeViewModel extends ViewModel {
 
     private final HomeRepository repository = new HomeRepository();
     private final MutableLiveData<HomeFilterState> filterStateLiveData = new MutableLiveData<>(new HomeFilterState());
-    private final MutableLiveData<List<ProductModel>> displayedProductsLiveData = new MutableLiveData<>();
+    private final MediatorLiveData<List<ProductModel>> displayedProductsLiveData = new MediatorLiveData<>();
 
     public HomeViewModel() {
+        displayedProductsLiveData.addSource(repository.getProductsLiveData(), products -> applyCurrentFilter());
         applyCurrentFilter();
     }
 
     public LiveData<List<ProductModel>> getDisplayedProductsLiveData() {
         return displayedProductsLiveData;
+    }
+
+    public LiveData<List<HomeBannerModel>> getBannersLiveData() {
+        return repository.getBannersLiveData();
     }
 
     public LiveData<HomeFilterState> getFilterStateLiveData() {
@@ -42,10 +48,6 @@ public class HomeViewModel extends ViewModel {
 
     public LiveData<List<String>> getRecentSearchesLiveData() {
         return repository.getRecentSearchesLiveData();
-    }
-
-    public List<HomeBannerModel> getBanners() {
-        return repository.getBanners();
     }
 
     @NonNull
@@ -96,6 +98,7 @@ public class HomeViewModel extends ViewModel {
     }
 
     public void reload() {
+        repository.refreshPublicCatalog();
         applyCurrentFilter();
     }
 

@@ -5,20 +5,38 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.RemoteImageHelper;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Adapter cho ViewPager2 hiển thị ảnh nhiều góc nhìn của giày.
+ * Adapter cho ViewPager2 hiển thị ảnh nhiều góc nhìn của giày từ URL hoặc drawable.
  */
 public class ProductGalleryAdapter extends RecyclerView.Adapter<ProductGalleryAdapter.GalleryViewHolder> {
 
-    private final int[] imageResIds;
+    private final List<String> imageUrls = new ArrayList<>();
+    @DrawableRes
+    private final int fallbackResId;
 
-    public ProductGalleryAdapter(int[] imageResIds) {
-        this.imageResIds = imageResIds != null ? imageResIds : new int[0];
+    public ProductGalleryAdapter(List<String> imageUrls, @DrawableRes int fallbackResId) {
+        if (imageUrls != null) {
+            this.imageUrls.addAll(imageUrls);
+        }
+        this.fallbackResId = fallbackResId != 0 ? fallbackResId : R.drawable.img_shoe_asics_novablast;
+    }
+
+    public void submitImages(List<String> newUrls) {
+        imageUrls.clear();
+        if (newUrls != null) {
+            imageUrls.addAll(newUrls);
+        }
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -31,12 +49,12 @@ public class ProductGalleryAdapter extends RecyclerView.Adapter<ProductGalleryAd
 
     @Override
     public void onBindViewHolder(@NonNull GalleryViewHolder holder, int position) {
-        holder.imageView.setImageResource(imageResIds[position]);
+        RemoteImageHelper.bindImage(holder.imageView, imageUrls.get(position), fallbackResId);
     }
 
     @Override
     public int getItemCount() {
-        return imageResIds.length;
+        return imageUrls.size();
     }
 
     static class GalleryViewHolder extends RecyclerView.ViewHolder {

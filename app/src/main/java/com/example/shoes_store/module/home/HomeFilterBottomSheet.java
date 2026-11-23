@@ -30,9 +30,6 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         void onFilterApplied(HomeFilterState updatedState);
     }
 
-    private static final String[] CATEGORIES = {"Tất cả", "Daily", "Race", "Tempo", "Trail", "Recovery"};
-    private static final String[] BRANDS = {"Tất cả", "Nike", "ASICS", "HOKA", "Adidas", "Saucony", "Brooks"};
-
     private final HomeRepository repository = new HomeRepository();
     private HomeFilterState workingState = new HomeFilterState();
     private OnFilterAppliedListener listener;
@@ -61,7 +58,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         RangeSlider priceSlider = view.findViewById(R.id.filter_price_slider);
         MaterialButton applyBtn = view.findViewById(R.id.filter_apply_btn);
 
-        populateChips(categoryGroup, CATEGORIES, value -> {
+        populateChips(categoryGroup, repository.getAvailableCategories(), value -> {
             if (HomeFilterState.ALL.equals(value)) {
                 workingState.clearCategories();
             } else {
@@ -70,7 +67,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
             syncFilterUi(categoryGroup, brandGroup, categoryHint, brandHint, applyBtn);
         });
 
-        populateChips(brandGroup, BRANDS, value -> {
+        populateChips(brandGroup, repository.getAvailableBrands(), value -> {
             if (HomeFilterState.ALL.equals(value)) {
                 workingState.clearBrands();
             } else {
@@ -114,7 +111,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         void onChipClicked(String value);
     }
 
-    private void populateChips(ChipGroup group, String[] items, ChipClickCallback callback) {
+    private void populateChips(ChipGroup group, List<String> items, ChipClickCallback callback) {
         group.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         for (String label : items) {

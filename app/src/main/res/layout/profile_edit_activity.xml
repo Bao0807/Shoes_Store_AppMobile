@@ -143,12 +143,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="Email">
+                android:hint="Email"
+                app:helperText="Email gắn với tài khoản đăng nhập">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/edit_email"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:cursorVisible="false"
+                    android:enabled="false"
+                    android:focusable="false"
                     android:inputType="textEmailAddress" />
             </com.google.android.material.textfield.TextInputLayout>
 

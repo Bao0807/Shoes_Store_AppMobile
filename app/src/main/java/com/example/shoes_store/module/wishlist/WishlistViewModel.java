@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.product.ProductModel;
 
 import java.util.List;
@@ -19,6 +20,10 @@ public class WishlistViewModel extends ViewModel {
 
     public LiveData<Set<String>> getFavoriteIdsLiveData() {
         return repository.getFavoriteIdsLiveData();
+    }
+
+    public LiveData<List<ProductModel>> getProductsLiveData() {
+        return repository.getProductsLiveData();
     }
 
     public String getSelectedCategory() {
@@ -37,7 +42,7 @@ public class WishlistViewModel extends ViewModel {
         repository.removeFavorite(productId);
     }
 
-    public String addQuickToCart(@NonNull ProductModel product) {
-        return repository.addQuickToCart(product);
+    public void addQuickToCart(@NonNull ProductModel product, @NonNull ResourceCallback<String> callback) {
+        repository.addQuickToCart(product, callback);
     }
 }

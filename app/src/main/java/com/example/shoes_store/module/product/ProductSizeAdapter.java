@@ -11,11 +11,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Adapter chọn size EU cho giày chạy bộ (hỗ trợ trạng thái hết hàng).
+ * Adapter chọn size EU cho giày chạy bộ (hỗ trợ trạng thái hết hàng theo biến thể).
  */
 public class ProductSizeAdapter extends RecyclerView.Adapter<ProductSizeAdapter.SizeViewHolder> {
 
@@ -23,8 +25,8 @@ public class ProductSizeAdapter extends RecyclerView.Adapter<ProductSizeAdapter.
         void onSizeSelected(String size);
     }
 
-    private final List<String> sizes;
-    private final Set<String> outOfStockSizes;
+    private final List<String> sizes = new ArrayList<>();
+    private final Set<String> outOfStockSizes = new LinkedHashSet<>();
     private final OnSizeSelectedListener listener;
     private String selectedSize;
 
@@ -34,10 +36,27 @@ public class ProductSizeAdapter extends RecyclerView.Adapter<ProductSizeAdapter.
             String initialSelected,
             OnSizeSelectedListener listener
     ) {
-        this.sizes = sizes;
-        this.outOfStockSizes = outOfStockSizes;
+        if (sizes != null) {
+            this.sizes.addAll(sizes);
+        }
+        if (outOfStockSizes != null) {
+            this.outOfStockSizes.addAll(outOfStockSizes);
+        }
         this.selectedSize = initialSelected;
         this.listener = listener;
+    }
+
+    public void updateSizes(List<String> newSizes, Set<String> newOutOfStock, String nextSelected) {
+        this.sizes.clear();
+        if (newSizes != null) {
+            this.sizes.addAll(newSizes);
+        }
+        this.outOfStockSizes.clear();
+        if (newOutOfStock != null) {
+            this.outOfStockSizes.addAll(newOutOfStock);
+        }
+        this.selectedSize = nextSelected;
+        notifyDataSetChanged();
     }
 
     public String getSelectedSize() {

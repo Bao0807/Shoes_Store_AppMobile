@@ -13,7 +13,6 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
-import com.example.shoes_store.core.CurrencyFormatUtil;
 import com.google.android.material.card.MaterialCardView;
 
 import java.util.List;
@@ -67,7 +66,20 @@ public class CartVoucherAdapter extends RecyclerView.Adapter<CartVoucherAdapter.
 
         holder.shortBadgeText.setText(item.getShortBadge());
         holder.codeText.setText(item.getCode());
-        holder.expiryText.setText("HSD: " + item.getExpiryDate());
+
+        StringBuilder meta = new StringBuilder();
+        if (!item.getExpiryDate().isEmpty()) {
+            meta.append("HSD: ").append(item.getExpiryDate());
+        }
+        if (item.getUsageLimit() > 0) {
+            int remaining = Math.max(0, item.getUsageLimit() - item.getUsedCount());
+            if (meta.length() > 0) {
+                meta.append(" · ");
+            }
+            meta.append("Còn ").append(remaining).append(" lượt");
+        }
+        holder.expiryText.setText(meta.toString());
+
         holder.titleText.setText(item.getTitle());
         holder.descText.setText(item.getDescription());
 
@@ -86,9 +98,9 @@ public class CartVoucherAdapter extends RecyclerView.Adapter<CartVoucherAdapter.
             holder.cardRoot.setAlpha(0.55f);
             holder.cardRoot.setStrokeColor(ContextCompat.getColor(context, R.color.border_subtle));
             holder.cardRoot.setStrokeWidth(Math.round(1.0f * context.getResources().getDisplayMetrics().density));
-            long missing = Math.max(0L, item.getMinOrderAmount() - subtotal);
+            String reason = item.getIneligibleReason(subtotal);
             holder.ineligibleHint.setVisibility(View.VISIBLE);
-            holder.ineligibleHint.setText("Mua thêm " + CurrencyFormatUtil.formatVnd(missing) + " để dùng mã này");
+            holder.ineligibleHint.setText(reason != null ? reason : "Mã giảm giá không khả dụng");
         }
 
         holder.cardRoot.setOnClickListener(v -> {
