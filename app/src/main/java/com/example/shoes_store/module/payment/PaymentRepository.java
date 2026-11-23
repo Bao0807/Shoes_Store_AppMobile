@@ -4,85 +4,39 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.shoes_store.core.FirebaseProviderHelper;
-import com.example.shoes_store.core.FirestoreStoreHelper;
+import com.example.shoes_store.core.FirestoreReadUtil;
 import com.example.shoes_store.core.ResourceCallback;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Repository sở hữu toàn bộ nghiệp vụ thanh toán và truy xuất collection `payments` trên Firestore.
+ * Repository sở hữu truy xuất collection `payments` trên Cloud Firestore.
  */
 public class PaymentRepository {
 
+    private static volatile PaymentRepository instance;
+
     private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
 
-    @NonNull
-    public static PaymentModel.Status resolveInitialStatus(@NonNull PaymentModel.Method method) {
-        return method == PaymentModel.Method.COD
-                ? PaymentModel.Status.UNPAID
-                : PaymentModel.Status.PAID;
+    private PaymentRepository() {
     }
 
-    @NonNull
-    public static PaymentModel.Status resolveStatusOnOrderCancel(@Nullable String currentStatus) {
-        return PaymentModel.Status.PAID.name().equalsIgnoreCase(currentStatus)
-                ? PaymentModel.Status.REFUNDED
-                : PaymentModel.Status.FAILED;
+    public static PaymentRepository getInstance() {
+        if (instance == null) {
+            synchronized (PaymentRepository.class) {
+                if (instance == null) {
+                    instance = new PaymentRepository();
+                }
+            }
+        }
+        return instance;
     }
 
-    @NonNull
-    public static String buildTransactionCode(@NonNull PaymentModel.Status status, @NonNull String orderCode) {
-        return status == PaymentModel.Status.PAID ? "TXN-" + orderCode : "";
-    }
-
-    @NonNull
-    public static Map<String, Object> buildPaymentData(
-            @NonNull String paymentId,
-            @NonNull String orderId,
-            @NonNull String userId,
-            @NonNull PaymentModel.Method method,
-            long amount,
-            @NonNull String orderCode,
-            @NonNull Timestamp now
-    ) {
-        PaymentModel.Status payStatus = resolveInitialStatus(method);
-        Map<String, Object> paymentData = new HashMap<>();
-        paymentData.put("paymentId", paymentId);
-        paymentData.put("orderId", orderId);
-        paymentData.put("userId", userId);
-        paymentData.put("method", method.name());
-        paymentData.put("status", payStatus.name());
-        paymentData.put("amount", amount);
-        paymentData.put("transactionCode", buildTransactionCode(payStatus, orderCode));
-        paymentData.put("paidAt", payStatus == PaymentModel.Status.PAID ? now : null);
-        paymentData.put("createdAt", now);
-        return paymentData;
-    }
-
-    @NonNull
-    public static PaymentModel mapPayment(@NonNull DocumentSnapshot doc) {
-        return new PaymentModel(
-                FirestoreStoreHelper.readString(doc, "paymentId", doc.getId()),
-                FirestoreStoreHelper.readString(doc, "orderId", ""),
-                FirestoreStoreHelper.readString(doc, "userId", ""),
-                PaymentModel.Method.fromStorage(FirestoreStoreHelper.readString(doc, "method", "COD")),
-                PaymentModel.Status.fromStorage(FirestoreStoreHelper.readString(doc, "status", "UNPAID")),
-                FirestoreStoreHelper.readLong(doc, "amount", 0L),
-                FirestoreStoreHelper.readString(doc, "transactionCode", ""),
-                FirestoreStoreHelper.readMillis(doc, "paidAt"),
-                FirestoreStoreHelper.readMillis(doc, "createdAt")
-        );
-    }
-
-    @NonNull
-    public DocumentReference newPaymentDocumentRef(@NonNull FirebaseFirestore db) {
-        return db.collection(FirebaseProviderHelper.COL_PAYMENTS).document();
-    }
+    // ===== 1. ĐỌC =====
 
     public void findLatestPaymentRef(
             @NonNull String orderId,
@@ -91,14 +45,14 @@ public class PaymentRepository {
     ) {
         provider.getFirestore()
                 .collection(FirebaseProviderHelper.COL_PAYMENTS)
-                .whereEqualTo("orderId", orderId)
-                .whereEqualTo("userId", uid)
+                .whereEqualTo(PaymentMapper.FIELD_ORDER_ID, orderId)
+                .whereEqualTo(PaymentMapper.FIELD_USER_ID, uid)
                 .get()
                 .addOnSuccessListener(snap -> {
                     DocumentReference latestRef = null;
                     long newestMillis = -1L;
                     for (DocumentSnapshot doc : snap.getDocuments()) {
-                        long created = FirestoreStoreHelper.readMillis(doc, "createdAt");
+                        long created = FirestoreReadUtil.readMillis(doc, PaymentMapper.FIELD_CREATED_AT);
                         if (latestRef == null || created >= newestMillis) {
                             newestMillis = created;
                             latestRef = doc.getReference();
@@ -117,13 +71,13 @@ public class PaymentRepository {
         }
         provider.getFirestore()
                 .collection(FirebaseProviderHelper.COL_PAYMENTS)
-                .whereEqualTo("orderId", orderId)
-                .whereEqualTo("userId", uid)
+                .whereEqualTo(PaymentMapper.FIELD_ORDER_ID, orderId)
+                .whereEqualTo(PaymentMapper.FIELD_USER_ID, uid)
                 .get()
                 .addOnSuccessListener(snap -> {
                     PaymentModel latest = null;
                     for (DocumentSnapshot doc : snap.getDocuments()) {
-                        PaymentModel candidate = mapPayment(doc);
+                        PaymentModel candidate = PaymentMapper.fromSnapshot(doc);
                         if (latest == null || candidate.getCreatedAtMillis() >= latest.getCreatedAtMillis()) {
                             latest = candidate;
                         }
@@ -131,5 +85,32 @@ public class PaymentRepository {
                     callback.onSuccess(latest);
                 })
                 .addOnFailureListener(e -> callback.onError("Không thể tải chi tiết thanh toán"));
+    }
+
+    // ===== 2. HỖ TRỢ TRANSACTION ĐƠN HÀNG =====
+
+    @NonNull
+    public DocumentReference newPaymentDocumentRef(@NonNull FirebaseFirestore db) {
+        return db.collection(FirebaseProviderHelper.COL_PAYMENTS).document();
+    }
+
+    @NonNull
+    public static Map<String, Object> buildPaymentData(
+            @NonNull String paymentId,
+            @NonNull String orderId,
+            @NonNull String userId,
+            @NonNull PaymentModel.Method method,
+            long amount,
+            @NonNull String orderCode,
+            @NonNull Timestamp now
+    ) {
+        PaymentModel.Status status = PaymentService.resolveInitialStatus(method);
+        String transactionCode = PaymentService.buildTransactionCode(status, orderCode);
+        return PaymentMapper.toMap(paymentId, orderId, userId, method, status, amount, transactionCode, now);
+    }
+
+    @Nullable
+    public static PaymentModel.Status resolveInitialStatus(@NonNull PaymentModel.Method method) {
+        return PaymentService.resolveInitialStatus(method);
     }
 }

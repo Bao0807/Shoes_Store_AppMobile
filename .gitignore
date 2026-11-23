@@ -7,10 +7,41 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/appInsightsSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/misc.xml
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# AI & Local Assistant Configs
 .agent
+.agent/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursor
+.cursor/
+.cursorrules
+.windsurf
+.windsurf/
+.clinerules
+.aider*
+
+# Internal Docs
+.docs
+.docs/
+docs
+docs/
+
+# Signing Keys & Sensitive Credentials
+*.jks
+*.keystore
+key.properties
+.env
+*.env
+*firebase-adminsdk*.json
+service-account*.json

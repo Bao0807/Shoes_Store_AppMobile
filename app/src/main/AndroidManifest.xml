@@ -73,6 +73,12 @@
             android:name=".module.auth.AuthRegisterActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".module.admin.AdminDashboardActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

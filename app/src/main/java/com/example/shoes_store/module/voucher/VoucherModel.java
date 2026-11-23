@@ -1,17 +1,15 @@
-package com.example.shoes_store.module.cart;
+package com.example.shoes_store.module.voucher;
 
 import androidx.annotation.Nullable;
-
-import com.example.shoes_store.core.CurrencyFormatUtil;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 /**
- * Model mã giảm giá (Voucher) áp dụng trong giỏ hàng và thanh toán.
+ * Model mã giảm giá (Voucher) dùng chung cho Giỏ hàng, Đặt hàng, Thông báo và Kho Voucher.
  */
-public class CartVoucherModel {
+public class VoucherModel {
 
     private final String code;
     private final String shortBadge;
@@ -25,7 +23,7 @@ public class CartVoucherModel {
     private final long expiryTimestampMillis;
     private final boolean active;
 
-    public CartVoucherModel(
+    public VoucherModel(
             String code,
             String shortBadge,
             String title,
@@ -37,7 +35,7 @@ public class CartVoucherModel {
         this(code, shortBadge, title, description, discountAmount, minOrderAmount, expiryDate, 0, 0, 0L, true);
     }
 
-    public CartVoucherModel(
+    public VoucherModel(
             String code,
             String shortBadge,
             String title,
@@ -132,19 +130,6 @@ public class CartVoucherModel {
 
     @Nullable
     public String getIneligibleReason(long subtotal) {
-        if (!active) {
-            return "Mã giảm giá hiện không còn áp dụng";
-        }
-        if (!isNotExpired()) {
-            return "Mã giảm giá đã hết hạn sử dụng";
-        }
-        if (!hasRemainingQuota()) {
-            return "Mã giảm giá đã hết lượt sử dụng";
-        }
-        if (subtotal <= 0 || subtotal < minOrderAmount) {
-            long missing = Math.max(0L, minOrderAmount - Math.max(0L, subtotal));
-            return "Mua thêm " + CurrencyFormatUtil.formatVnd(missing) + " để dùng mã này";
-        }
-        return null;
+        return VoucherService.getIneligibleReason(this, subtotal);
     }
 }

@@ -20,6 +20,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AvatarImageHelper;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.core.UiInsetHelper;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -146,9 +147,27 @@ public class ProfileEditActivity extends AppCompatActivity {
                 Toast.makeText(this, "Vui lòng nhập đầy đủ họ tên và SĐT", Toast.LENGTH_SHORT).show();
                 return;
             }
-            viewModel.updateProfile(fullName, phone, email, selectedSize, selectedGoal, selectedAvatarUri);
-            Toast.makeText(this, "Đã lưu hồ sơ chạy bộ", Toast.LENGTH_SHORT).show();
-            finish();
+            v.setEnabled(false);
+            viewModel.updateProfile(fullName, phone, email, selectedSize, selectedGoal, selectedAvatarUri,
+                    new ResourceCallback<Void>() {
+                        @Override
+                        public void onSuccess(Void data) {
+                            if (isFinishing() || isDestroyed()) {
+                                return;
+                            }
+                            Toast.makeText(ProfileEditActivity.this, "Đã lưu hồ sơ chạy bộ", Toast.LENGTH_SHORT).show();
+                            finish();
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            if (isFinishing() || isDestroyed()) {
+                                return;
+                            }
+                            v.setEnabled(true);
+                            Toast.makeText(ProfileEditActivity.this, message, Toast.LENGTH_SHORT).show();
+                        }
+                    });
         });
     }
 

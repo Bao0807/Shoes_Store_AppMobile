@@ -7,10 +7,10 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.cart.CartItemModel;
-import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.payment.PaymentModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
+import com.example.shoes_store.module.voucher.VoucherModel;
 
 import java.util.List;
 
@@ -19,7 +19,7 @@ import java.util.List;
  */
 public class OrderViewModel extends ViewModel {
 
-    private final OrderRepository repository = new OrderRepository();
+    private final OrderRepository repository = OrderRepository.getInstance();
 
     @Nullable
     public ProductModel getProductById(@Nullable String productId) {
@@ -85,16 +85,16 @@ public class OrderViewModel extends ViewModel {
         repository.reorder(order, callback);
     }
 
-    public List<CartVoucherModel> getVouchers() {
+    public List<VoucherModel> getVouchers() {
         return repository.getVouchers();
     }
 
-    public LiveData<List<CartVoucherModel>> getVouchersLiveData() {
+    public LiveData<List<VoucherModel>> getVouchersLiveData() {
         return repository.getVouchersLiveData();
     }
 
     @Nullable
-    public CartVoucherModel findVoucherByCode(@Nullable String code) {
+    public VoucherModel findVoucherByCode(@Nullable String code) {
         return repository.findVoucherByCode(code);
     }
 }

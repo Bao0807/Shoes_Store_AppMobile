@@ -1,4 +1,4 @@
-package com.example.shoes_store.module.cart;
+package com.example.shoes_store.module.voucher;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -23,25 +23,25 @@ import java.util.List;
 /**
  * BottomSheet hiển thị danh sách voucher của shop để người dùng chọn hoặc nhập mã.
  */
-public class CartVoucherBottomSheet extends BottomSheetDialogFragment {
+public class VoucherBottomSheet extends BottomSheetDialogFragment {
 
     public interface OnVoucherSelectedListener {
-        void onVoucherSelected(@Nullable CartVoucherModel voucher);
+        void onVoucherSelected(@Nullable VoucherModel voucher);
     }
 
-    private List<CartVoucherModel> vouchers = new ArrayList<>();
+    private List<VoucherModel> vouchers = new ArrayList<>();
     private long subtotal = 0L;
     @Nullable
-    private CartVoucherModel workingSelection;
+    private VoucherModel workingSelection;
     private OnVoucherSelectedListener listener;
 
-    public static CartVoucherBottomSheet newInstance(
-            List<CartVoucherModel> vouchers,
+    public static VoucherBottomSheet newInstance(
+            List<VoucherModel> vouchers,
             long subtotal,
-            @Nullable CartVoucherModel currentVoucher,
+            @Nullable VoucherModel currentVoucher,
             OnVoucherSelectedListener listener
     ) {
-        CartVoucherBottomSheet sheet = new CartVoucherBottomSheet();
+        VoucherBottomSheet sheet = new VoucherBottomSheet();
         sheet.vouchers = vouchers != null ? vouchers : new ArrayList<>();
         sheet.subtotal = subtotal;
         sheet.workingSelection = currentVoucher;
@@ -52,7 +52,7 @@ public class CartVoucherBottomSheet extends BottomSheetDialogFragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.cart_sheet_voucher, container, false);
+        return inflater.inflate(R.layout.voucher_sheet_picker, container, false);
     }
 
     @Override
@@ -67,8 +67,8 @@ public class CartVoucherBottomSheet extends BottomSheetDialogFragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         String initialCode = workingSelection != null ? workingSelection.getCode() : null;
-        CartVoucherAdapter[] adapterHolder = new CartVoucherAdapter[1];
-        adapterHolder[0] = new CartVoucherAdapter(vouchers, subtotal, initialCode, voucher -> {
+        VoucherAdapter[] adapterHolder = new VoucherAdapter[1];
+        adapterHolder[0] = new VoucherAdapter(vouchers, subtotal, initialCode, voucher -> {
             if (!voucher.isEligible(subtotal)) {
                 String reason = voucher.getIneligibleReason(subtotal);
                 Toast.makeText(
@@ -94,7 +94,7 @@ public class CartVoucherBottomSheet extends BottomSheetDialogFragment {
                 Toast.makeText(requireContext(), "Vui lòng nhập mã voucher", Toast.LENGTH_SHORT).show();
                 return;
             }
-            CartVoucherModel matched = findByCode(entered);
+            VoucherModel matched = findByCode(entered);
             if (matched == null) {
                 Toast.makeText(requireContext(), "Mã voucher không hợp lệ", Toast.LENGTH_SHORT).show();
                 return;
@@ -129,8 +129,8 @@ public class CartVoucherBottomSheet extends BottomSheetDialogFragment {
     }
 
     @Nullable
-    private CartVoucherModel findByCode(String code) {
-        for (CartVoucherModel voucher : vouchers) {
+    private VoucherModel findByCode(String code) {
+        for (VoucherModel voucher : vouchers) {
             if (voucher.getCode().equalsIgnoreCase(code)) {
                 return voucher;
             }

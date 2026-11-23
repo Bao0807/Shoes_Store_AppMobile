@@ -15,7 +15,7 @@ import java.util.Set;
  */
 public class WishlistViewModel extends ViewModel {
 
-    private final WishlistRepository repository = new WishlistRepository();
+    private final WishlistRepository repository = WishlistRepository.getInstance();
     private String selectedCategory = "Tất cả";
 
     public LiveData<Set<String>> getFavoriteIdsLiveData() {

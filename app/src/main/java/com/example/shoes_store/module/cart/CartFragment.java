@@ -21,6 +21,8 @@ import com.example.shoes_store.core.CurrencyFormatUtil;
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.order.OrderCheckoutActivity;
 import com.example.shoes_store.module.product.ProductDetailActivity;
+import com.example.shoes_store.module.voucher.VoucherBottomSheet;
+import com.example.shoes_store.module.voucher.VoucherModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.checkbox.MaterialCheckBox;
 
@@ -76,15 +78,22 @@ public class CartFragment extends Fragment {
 
             @Override
             public void onSelectionChanged(CartItemModel item, boolean selected) {
-                viewModel.toggleItemSelected(item.getId(), selected);
+                viewModel.toggleItemSelected(item.getId(), selected, toastErrorCallback());
             }
 
             @Override
             public void onQuantityDelta(CartItemModel item, int delta) {
-                viewModel.updateQuantity(item, delta, new ResourceCallback<Void>() {
+                viewModel.updateQuantity(item, delta, toastErrorCallback());
+            }
+
+            @Override
+            public void onRemoveClick(CartItemModel item) {
+                viewModel.removeItem(item.getId(), new ResourceCallback<Void>() {
                     @Override
                     public void onSuccess(Void data) {
-                        // LiveData tự cập nhật từ Firestore
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), "Đã xóa khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
+                        }
                     }
 
                     @Override
@@ -94,12 +103,6 @@ public class CartFragment extends Fragment {
                         }
                     }
                 });
-            }
-
-            @Override
-            public void onRemoveClick(CartItemModel item) {
-                viewModel.removeItem(item.getId());
-                Toast.makeText(requireContext(), "Đã xóa khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
             }
         });
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -120,7 +123,7 @@ public class CartFragment extends Fragment {
             }
             long subtotal = getSelectedSubtotal();
             long discount = viewModel.calculateEffectiveDiscount(subtotal);
-            CartVoucherModel activeVoucher = viewModel.getSelectedVoucher();
+            VoucherModel activeVoucher = viewModel.getSelectedVoucher();
             Intent intent = new Intent(requireContext(), OrderCheckoutActivity.class);
             intent.putExtra(OrderCheckoutActivity.EXTRA_DISCOUNT_AMOUNT, discount);
             if (activeVoucher != null && discount > 0) {
@@ -146,7 +149,7 @@ public class CartFragment extends Fragment {
             Toast.makeText(requireContext(), "Vui lòng chọn sản phẩm trước khi chọn voucher", Toast.LENGTH_SHORT).show();
             return;
         }
-        CartVoucherBottomSheet sheet = CartVoucherBottomSheet.newInstance(
+        VoucherBottomSheet sheet = VoucherBottomSheet.newInstance(
                 viewModel.getAvailableVouchers(),
                 subtotal,
                 viewModel.getSelectedVoucher(),
@@ -182,7 +185,7 @@ public class CartFragment extends Fragment {
         emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
 
         long discount = viewModel.calculateEffectiveDiscount(selectedSubtotal);
-        CartVoucherModel activeVoucher = viewModel.getSelectedVoucher();
+        VoucherModel activeVoucher = viewModel.getSelectedVoucher();
         if (activeVoucher != null && discount > 0) {
             voucherTitle.setText("Mã " + activeVoucher.getCode());
             voucherSubtitle.setText("Đã giảm " + CurrencyFormatUtil.formatVnd(discount));
@@ -199,7 +202,25 @@ public class CartFragment extends Fragment {
 
         selectAllCb.setOnCheckedChangeListener(null);
         selectAllCb.setChecked(allSelected);
-        selectAllCb.setOnCheckedChangeListener((buttonView, isChecked) -> viewModel.selectAll(latestItems, isChecked));
+        selectAllCb.setOnCheckedChangeListener((buttonView, isChecked) ->
+                viewModel.selectAll(latestItems, isChecked, toastErrorCallback()));
+    }
+
+    @NonNull
+    private ResourceCallback<Void> toastErrorCallback() {
+        return new ResourceCallback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                // LiveData tự cập nhật từ Firestore
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isAdded()) {
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                }
+            }
+        };
     }
 
     private long getSelectedSubtotal() {

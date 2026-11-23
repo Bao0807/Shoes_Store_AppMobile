@@ -13,7 +13,7 @@ import com.google.firebase.auth.FirebaseUser;
  */
 public class AuthViewModel extends ViewModel {
 
-    private final AuthRepository repository = new AuthRepository();
+    private final AuthRepository repository = AuthRepository.getInstance();
     private final MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
 
     public LiveData<Boolean> getLoadingLiveData() {
@@ -31,6 +31,38 @@ public class AuthViewModel extends ViewModel {
             public void onSuccess(FirebaseUser data) {
                 loadingLiveData.setValue(false);
                 callback.onSuccess(data);
+            }
+
+            @Override
+            public void onError(String message) {
+                loadingLiveData.setValue(false);
+                callback.onError(message);
+            }
+        });
+    }
+
+    public void loginAndResolveAdmin(
+            @NonNull String email,
+            @NonNull String password,
+            @NonNull ResourceCallback<Boolean> callback
+    ) {
+        loadingLiveData.setValue(true);
+        repository.login(email, password, new ResourceCallback<FirebaseUser>() {
+            @Override
+            public void onSuccess(FirebaseUser user) {
+                repository.resolveUserIsAdmin(user, new ResourceCallback<Boolean>() {
+                    @Override
+                    public void onSuccess(Boolean isAdmin) {
+                        loadingLiveData.setValue(false);
+                        callback.onSuccess(Boolean.TRUE.equals(isAdmin));
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        loadingLiveData.setValue(false);
+                        callback.onSuccess(false);
+                    }
+                });
             }
 
             @Override

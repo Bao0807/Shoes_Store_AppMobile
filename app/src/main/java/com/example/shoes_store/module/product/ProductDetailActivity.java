@@ -228,7 +228,7 @@ public class ProductDetailActivity extends AppCompatActivity {
                 for (ProductReviewModel rev : latestReviews) {
                     ratings.add((double) rev.getRating());
                 }
-                double liveAvg = ProductReviewHelper.calculateAverageRating(ratings);
+                double liveAvg = ProductReviewService.calculateAverageRating(ratings);
                 updateRatingSummaryViews(liveAvg, latestReviews.size());
             } else {
                 updateRatingSummaryViews(0.0, 0);
@@ -239,7 +239,7 @@ public class ProductDetailActivity extends AppCompatActivity {
 
     private void refreshReviewEligibility() {
         String uid = FirebaseProviderHelper.getInstance().getCurrentUid();
-        eligibleReviewOrderId = ProductReviewHelper.findEligibleOrderIdForReview(
+        eligibleReviewOrderId = ProductReviewService.findEligibleOrderIdForReview(
                 uid,
                 product.getId(),
                 latestOrders,
@@ -248,7 +248,7 @@ public class ProductDetailActivity extends AppCompatActivity {
         if (eligibleReviewOrderId != null) {
             writeReviewBtn.setVisibility(View.VISIBLE);
             reviewEligibilityHint.setVisibility(View.GONE);
-        } else if (ProductReviewHelper.hasUserReviewedProduct(uid, latestReviews)) {
+        } else if (ProductReviewService.hasUserReviewedProduct(uid, latestReviews)) {
             writeReviewBtn.setVisibility(View.GONE);
             reviewEligibilityHint.setVisibility(View.VISIBLE);
             reviewEligibilityHint.setText("Bạn đã đánh giá sản phẩm từ đơn hàng đã hoàn tất.");
@@ -297,7 +297,7 @@ public class ProductDetailActivity extends AppCompatActivity {
             for (ProductReviewModel rev : latestReviews) {
                 ratings.add((double) rev.getRating());
             }
-            updateRatingSummaryViews(ProductReviewHelper.calculateAverageRating(ratings), latestReviews.size());
+            updateRatingSummaryViews(ProductReviewService.calculateAverageRating(ratings), latestReviews.size());
         } else {
             double fallbackRating = product.getReviewCount() <= 0 ? 0.0 : product.getRating();
             updateRatingSummaryViews(fallbackRating, product.getReviewCount());

@@ -25,13 +25,18 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.example.shoes_store.core.FirebaseProviderHelper;
-import com.example.shoes_store.core.FirestoreStoreHelper;
+import com.example.shoes_store.core.SessionSyncHelper;
 import com.example.shoes_store.core.UiInsetHelper;
+import com.example.shoes_store.module.admin.AdminDashboardActivity;
+import com.example.shoes_store.module.admin.AdminService;
 import com.example.shoes_store.module.auth.AuthLoginActivity;
 import com.example.shoes_store.module.cart.CartFragment;
+import com.example.shoes_store.module.cart.CartRepository;
 import com.example.shoes_store.module.home.HomeFragment;
 import com.example.shoes_store.module.notification.NotificationFragment;
+import com.example.shoes_store.module.notification.NotificationRepository;
 import com.example.shoes_store.module.profile.ProfileFragment;
+import com.example.shoes_store.module.profile.ProfileRepository;
 import com.example.shoes_store.module.wishlist.WishlistFragment;
 
 /**
@@ -68,6 +73,14 @@ public class MainActivity extends AppCompatActivity {
     private TextView notificationBadgeView;
     private String activeTag = TAG_HOME;
     private int activeIndex = 0;
+    private static String lastAutoRoutedAdminUid = "";
+
+    public static void markAdminAutoRouted() {
+        String uid = FirebaseProviderHelper.getInstance().getCurrentUid();
+        if (uid != null) {
+            lastAutoRoutedAdminUid = uid;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -294,12 +307,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void observeBadges() {
-        FirestoreStoreHelper store = FirestoreStoreHelper.getInstance();
-        store.getCartTotalCountLiveData().observe(this, count -> updateBadgeView(cartBadgeView, count));
-        store.getUnreadNotificationCountLiveData().observe(this, unread -> updateBadgeView(notificationBadgeView, unread));
-        store.getSignedInLiveData().observe(this, signedIn -> {
-            if (Boolean.FALSE.equals(signedIn) && !TAG_HOME.equals(activeTag)) {
-                selectTab(R.id.nav_home, false);
+        CartRepository.getInstance().getCartTotalCountLiveData()
+                .observe(this, count -> updateBadgeView(cartBadgeView, count));
+        NotificationRepository.getInstance().getUnreadNotificationCountLiveData()
+                .observe(this, unread -> updateBadgeView(notificationBadgeView, unread));
+        SessionSyncHelper.getInstance().getSignedInLiveData().observe(this, signedIn -> {
+            if (Boolean.FALSE.equals(signedIn)) {
+                lastAutoRoutedAdminUid = "";
+                if (!TAG_HOME.equals(activeTag)) {
+                    selectTab(R.id.nav_home, false);
+                }
+            }
+        });
+        ProfileRepository.getInstance().getProfileLiveData().observe(this, profile -> {
+            if (profile != null
+                    && AdminService.isAdminRole(profile.getRole())
+                    && !profile.getUid().isEmpty()
+                    && !profile.getUid().equals(lastAutoRoutedAdminUid)) {
+                lastAutoRoutedAdminUid = profile.getUid();
+                startActivity(new Intent(this, AdminDashboardActivity.class));
             }
         });
     }

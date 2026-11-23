@@ -5,8 +5,9 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.shoes_store.module.cart.CartVoucherModel;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.order.OrderModel;
+import com.example.shoes_store.module.voucher.VoucherModel;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
  */
 public class ProfileViewModel extends ViewModel {
 
-    private final ProfileRepository repository = new ProfileRepository();
+    private final ProfileRepository repository = ProfileRepository.getInstance();
 
     public LiveData<ProfileModel> getProfileLiveData() {
         return repository.getProfileLiveData();
@@ -29,7 +30,7 @@ public class ProfileViewModel extends ViewModel {
         return repository.getAddressesLiveData();
     }
 
-    public List<CartVoucherModel> getVouchers() {
+    public List<VoucherModel> getVouchers() {
         return repository.getVouchers();
     }
 
@@ -39,9 +40,10 @@ public class ProfileViewModel extends ViewModel {
             @NonNull String email,
             @NonNull String preferredSize,
             @NonNull String runningGoal,
-            @Nullable String avatarUri
+            @Nullable String avatarUri,
+            @Nullable ResourceCallback<Void> callback
     ) {
-        repository.updateProfile(fullName, phone, email, preferredSize, runningGoal, avatarUri);
+        repository.updateProfile(fullName, phone, email, preferredSize, runningGoal, avatarUri, callback);
     }
 
     public void addOrUpdateAddress(
@@ -50,16 +52,17 @@ public class ProfileViewModel extends ViewModel {
             @NonNull String phone,
             @NonNull String addressDetail,
             @NonNull String label,
-            boolean isDefault
+            boolean isDefault,
+            @Nullable ResourceCallback<Void> callback
     ) {
-        repository.addOrUpdateAddress(editId, receiverName, phone, addressDetail, label, isDefault);
+        repository.addOrUpdateAddress(editId, receiverName, phone, addressDetail, label, isDefault, callback);
     }
 
-    public void setDefaultAddress(@NonNull String id) {
-        repository.setDefaultAddress(id);
+    public void setDefaultAddress(@NonNull String id, @Nullable ResourceCallback<Void> callback) {
+        repository.setDefaultAddress(id, callback);
     }
 
-    public void deleteAddress(@NonNull String id) {
-        repository.deleteAddress(id);
+    public void deleteAddress(@NonNull String id, @Nullable ResourceCallback<Void> callback) {
+        repository.deleteAddress(id, callback);
     }
 }

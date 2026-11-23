@@ -22,12 +22,12 @@ import com.example.shoes_store.core.CurrencyFormatUtil;
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.core.UiInsetHelper;
 import com.example.shoes_store.module.cart.CartItemModel;
-import com.example.shoes_store.module.cart.CartVoucherBottomSheet;
-import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.payment.PaymentModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.profile.ProfileAddressActivity;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
+import com.example.shoes_store.module.voucher.VoucherBottomSheet;
+import com.example.shoes_store.module.voucher.VoucherModel;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
@@ -52,7 +52,7 @@ public class OrderCheckoutActivity extends AppCompatActivity {
     private final List<CartItemModel> checkoutItems = new ArrayList<>();
     private ProfileAddressModel selectedAddress;
     @Nullable
-    private CartVoucherModel selectedVoucher;
+    private VoucherModel selectedVoucher;
     @Nullable
     private String pendingVoucherCode;
     private boolean isDirectBuy = false;
@@ -142,8 +142,8 @@ public class OrderCheckoutActivity extends AppCompatActivity {
             if (targetCode == null || targetCode.trim().isEmpty()) {
                 return;
             }
-            CartVoucherModel matched = null;
-            for (CartVoucherModel v : vouchers) {
+            VoucherModel matched = null;
+            for (VoucherModel v : vouchers) {
                 if (targetCode.equalsIgnoreCase(v.getCode())) {
                     matched = v;
                     break;
@@ -272,7 +272,7 @@ public class OrderCheckoutActivity extends AppCompatActivity {
         if (subtotal <= 0) {
             return;
         }
-        CartVoucherBottomSheet sheet = CartVoucherBottomSheet.newInstance(
+        VoucherBottomSheet sheet = VoucherBottomSheet.newInstance(
                 viewModel.getVouchers(),
                 subtotal,
                 selectedVoucher,

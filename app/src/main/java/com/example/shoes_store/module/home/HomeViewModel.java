@@ -17,7 +17,7 @@ import java.util.Set;
  */
 public class HomeViewModel extends ViewModel {
 
-    private final HomeRepository repository = new HomeRepository();
+    private final HomeRepository repository = HomeRepository.getInstance();
     private final MutableLiveData<HomeFilterState> filterStateLiveData = new MutableLiveData<>(new HomeFilterState());
     private final MediatorLiveData<List<ProductModel>> displayedProductsLiveData = new MediatorLiveData<>();
 

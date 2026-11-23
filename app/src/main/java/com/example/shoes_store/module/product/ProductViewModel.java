@@ -19,7 +19,7 @@ import java.util.Set;
  */
 public class ProductViewModel extends ViewModel {
 
-    private final ProductRepository repository = new ProductRepository();
+    private final ProductRepository repository = ProductRepository.getInstance();
     private final MutableLiveData<List<ProductVariantModel>> variantsLiveData = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<ProductReviewModel>> reviewsLiveData = new MutableLiveData<>(new ArrayList<>());
 

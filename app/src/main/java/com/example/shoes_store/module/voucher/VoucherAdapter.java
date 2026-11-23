@@ -1,4 +1,4 @@
-package com.example.shoes_store.module.cart;
+package com.example.shoes_store.module.voucher;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -20,20 +20,20 @@ import java.util.List;
 /**
  * Adapter hiển thị danh sách voucher trong BottomSheet chọn mã giảm giá.
  */
-public class CartVoucherAdapter extends RecyclerView.Adapter<CartVoucherAdapter.VoucherViewHolder> {
+public class VoucherAdapter extends RecyclerView.Adapter<VoucherAdapter.VoucherViewHolder> {
 
     public interface OnVoucherClickListener {
-        void onVoucherClick(CartVoucherModel voucher);
+        void onVoucherClick(VoucherModel voucher);
     }
 
-    private final List<CartVoucherModel> vouchers;
+    private final List<VoucherModel> vouchers;
     private final long subtotal;
     @Nullable
     private String selectedCode;
     private final OnVoucherClickListener listener;
 
-    public CartVoucherAdapter(
-            List<CartVoucherModel> vouchers,
+    public VoucherAdapter(
+            List<VoucherModel> vouchers,
             long subtotal,
             @Nullable String selectedCode,
             OnVoucherClickListener listener
@@ -53,13 +53,13 @@ public class CartVoucherAdapter extends RecyclerView.Adapter<CartVoucherAdapter.
     @Override
     public VoucherViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.cart_item_voucher, parent, false);
+                .inflate(R.layout.voucher_item_card, parent, false);
         return new VoucherViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull VoucherViewHolder holder, int position) {
-        CartVoucherModel item = vouchers.get(position);
+        VoucherModel item = vouchers.get(position);
         Context context = holder.itemView.getContext();
         boolean eligible = item.isEligible(subtotal);
         boolean isSelected = eligible && item.getCode().equalsIgnoreCase(selectedCode);

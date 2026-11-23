@@ -30,7 +30,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         void onFilterApplied(HomeFilterState updatedState);
     }
 
-    private final HomeRepository repository = new HomeRepository();
+    private final HomeRepository repository = HomeRepository.getInstance();
     private HomeFilterState workingState = new HomeFilterState();
     private OnFilterAppliedListener listener;
 

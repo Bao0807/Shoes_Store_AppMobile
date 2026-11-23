@@ -1,11 +1,11 @@
 package com.example.shoes_store;
 
+import com.example.shoes_store.module.product.ProductModel;
+import com.example.shoes_store.module.product.ProductReviewModel;
+import com.example.shoes_store.module.product.ProductReviewService;
 import com.example.shoes_store.module.order.OrderItemModel;
 import com.example.shoes_store.module.order.OrderModel;
 import com.example.shoes_store.module.payment.PaymentModel;
-import com.example.shoes_store.module.product.ProductModel;
-import com.example.shoes_store.module.product.ProductReviewHelper;
-import com.example.shoes_store.module.product.ProductReviewModel;
 import com.example.shoes_store.module.product.ProductVariantModel;
 
 import org.junit.Test;
@@ -16,6 +16,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -23,31 +24,41 @@ public class ProductReviewBusinessTest {
 
     @Test
     public void calculateAverageRatingHandlesEmptyNullAndRounding() {
-        assertEquals(0.0, ProductReviewHelper.calculateAverageRating(null), 0.001);
-        assertEquals(0.0, ProductReviewHelper.calculateAverageRating(Collections.emptyList()), 0.001);
-        assertEquals(4.9, ProductReviewHelper.calculateAverageRating(Arrays.asList(5.0, 4.8, 4.9)), 0.001);
-        assertEquals(4.8, ProductReviewHelper.calculateAverageRating(Arrays.asList(4.9, 4.7, 4.8)), 0.001);
+        assertEquals(0.0, ProductReviewService.calculateAverageRating(null), 0.001);
+        assertEquals(0.0, ProductReviewService.calculateAverageRating(Collections.emptyList()), 0.001);
+        assertEquals(4.9, ProductReviewService.calculateAverageRating(Arrays.asList(5.0, 4.8, 4.9)), 0.001);
+        assertEquals(4.8, ProductReviewService.calculateAverageRating(Arrays.asList(4.9, 4.7, 4.8)), 0.001);
     }
 
     @Test
     public void isVerifiedRealReviewRejectsSeedAndOrderlessReviews() {
         ProductReviewModel seedReview = new ProductReviewModel(
-                "rev_1", "p_novablast_5", ProductReviewHelper.LEGACY_SEED_USER_ID, "",
+                "rev_1", "p_novablast_5", ProductReviewService.LEGACY_SEED_USER_ID, "",
                 "Hoàng Nam", "", 5.0f, "20/11/2026", "Rất êm", 1000L
         );
-        assertFalse(ProductReviewHelper.isVerifiedRealReview(seedReview));
+        assertFalse(ProductReviewService.isVerifiedRealReview(seedReview));
 
         ProductReviewModel noOrderReview = new ProductReviewModel(
                 "rev_2", "p_novablast_5", "real_uid_1", "",
                 "Bảo", "", 5.0f, "20/11/2026", "Tốt", 1000L
         );
-        assertFalse(ProductReviewHelper.isVerifiedRealReview(noOrderReview));
+        assertFalse(ProductReviewService.isVerifiedRealReview(noOrderReview));
 
         ProductReviewModel realReview = new ProductReviewModel(
                 "rev_3", "p_novablast_5", "real_uid_1", "ord_1",
                 "Bảo", "", 5.0f, "23/11/2026", "Chạy rất êm", 2000L
         );
-        assertTrue(ProductReviewHelper.isVerifiedRealReview(realReview));
+        assertTrue(ProductReviewService.isVerifiedRealReview(realReview));
+    }
+
+    @Test
+    public void validateReviewInputChecksUidOrderRatingAndComment() {
+        assertNotNull(ProductReviewService.validateReviewInput(null, "ord_1", 5f, "Tốt"));
+        assertNotNull(ProductReviewService.validateReviewInput("u1", " ", 5f, "Tốt"));
+        assertNotNull(ProductReviewService.validateReviewInput("u1", "ord_1", 0f, "Tốt"));
+        assertNotNull(ProductReviewService.validateReviewInput("u1", "ord_1", 6f, "Tốt"));
+        assertNotNull(ProductReviewService.validateReviewInput("u1", "ord_1", 5f, "   "));
+        assertNull(ProductReviewService.validateReviewInput("u1", "ord_1", 4.5f, "Giày nhẹ và êm"));
     }
 
     @Test
@@ -70,20 +81,20 @@ public class ProductReviewBusinessTest {
 
         assertEquals(
                 "ord_done",
-                ProductReviewHelper.findEligibleOrderIdForReview("uid_1", "p_novablast_5", orders, Collections.emptyList())
+                ProductReviewService.findEligibleOrderIdForReview("uid_1", "p_novablast_5", orders, Collections.emptyList())
         );
 
         ProductReviewModel alreadyReviewed = new ProductReviewModel(
                 "rev_done", "p_novablast_5", "uid_1", "ord_done",
                 "Bảo", "", 5.0f, "23/11/2026", "Đã nhận giày", 3000L
         );
-        assertNull(ProductReviewHelper.findEligibleOrderIdForReview(
+        assertNull(ProductReviewService.findEligibleOrderIdForReview(
                 "uid_1", "p_novablast_5", orders, Collections.singletonList(alreadyReviewed)
         ));
-        assertTrue(ProductReviewHelper.hasUserReviewedProduct(
+        assertTrue(ProductReviewService.hasUserReviewedProduct(
                 "uid_1", Collections.singletonList(alreadyReviewed)
         ));
-        assertNull(ProductReviewHelper.findEligibleOrderIdForReview(
+        assertNull(ProductReviewService.findEligibleOrderIdForReview(
                 null, "p_novablast_5", orders, Collections.emptyList()
         ));
     }

@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.module.voucher.VoucherModel;
 
 import java.util.List;
 
@@ -14,32 +15,32 @@ import java.util.List;
  */
 public class CartViewModel extends ViewModel {
 
-    private final CartRepository repository = new CartRepository();
+    private final CartRepository repository = CartRepository.getInstance();
     @Nullable
-    private CartVoucherModel selectedVoucher;
+    private VoucherModel selectedVoucher;
 
     public LiveData<List<CartItemModel>> getCartItemsLiveData() {
         return repository.getCartItemsLiveData();
     }
 
-    public LiveData<List<CartVoucherModel>> getVouchersLiveData() {
+    public LiveData<List<VoucherModel>> getVouchersLiveData() {
         return repository.getVouchersLiveData();
     }
 
-    public List<CartVoucherModel> getAvailableVouchers() {
+    public List<VoucherModel> getAvailableVouchers() {
         return repository.getVouchers();
     }
 
     @Nullable
-    public CartVoucherModel getSelectedVoucher() {
+    public VoucherModel getSelectedVoucher() {
         return selectedVoucher;
     }
 
-    public void setSelectedVoucher(@Nullable CartVoucherModel voucher) {
+    public void setSelectedVoucher(@Nullable VoucherModel voucher) {
         this.selectedVoucher = voucher;
     }
 
-    public void syncSelectedVoucherWithLatest(@Nullable List<CartVoucherModel> latestVouchers) {
+    public void syncSelectedVoucherWithLatest(@Nullable List<VoucherModel> latestVouchers) {
         if (selectedVoucher == null) {
             return;
         }
@@ -48,7 +49,7 @@ public class CartViewModel extends ViewModel {
             return;
         }
         String code = selectedVoucher.getCode();
-        for (CartVoucherModel latest : latestVouchers) {
+        for (VoucherModel latest : latestVouchers) {
             if (code.equalsIgnoreCase(latest.getCode())) {
                 selectedVoucher = (latest.isActive() && latest.isNotExpired() && latest.hasRemainingQuota())
                         ? latest
@@ -78,15 +79,23 @@ public class CartViewModel extends ViewModel {
         repository.updateQuantity(item, delta, callback);
     }
 
-    public void toggleItemSelected(@NonNull String cartItemId, boolean selected) {
-        repository.toggleItemSelected(cartItemId, selected);
+    public void toggleItemSelected(
+            @NonNull String cartItemId,
+            boolean selected,
+            @Nullable ResourceCallback<Void> callback
+    ) {
+        repository.toggleItemSelected(cartItemId, selected, callback);
     }
 
-    public void selectAll(@Nullable List<CartItemModel> items, boolean selected) {
-        repository.selectAll(items, selected);
+    public void selectAll(
+            @Nullable List<CartItemModel> items,
+            boolean selected,
+            @Nullable ResourceCallback<Void> callback
+    ) {
+        repository.selectAll(items, selected, callback);
     }
 
-    public void removeItem(@NonNull String cartItemId) {
-        repository.removeItem(cartItemId);
+    public void removeItem(@NonNull String cartItemId, @Nullable ResourceCallback<Void> callback) {
+        repository.removeItem(cartItemId, callback);
     }
 }

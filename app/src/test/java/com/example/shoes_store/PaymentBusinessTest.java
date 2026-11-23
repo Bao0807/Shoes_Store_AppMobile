@@ -1,7 +1,7 @@
 package com.example.shoes_store;
 
 import com.example.shoes_store.module.payment.PaymentModel;
-import com.example.shoes_store.module.payment.PaymentRepository;
+import com.example.shoes_store.module.payment.PaymentService;
 
 import org.junit.Test;
 
@@ -13,26 +13,26 @@ public class PaymentBusinessTest {
 
     @Test
     public void resolveInitialStatusDependsOnPaymentMethod() {
-        assertEquals(PaymentModel.Status.UNPAID, PaymentRepository.resolveInitialStatus(PaymentModel.Method.COD));
-        assertEquals(PaymentModel.Status.PAID, PaymentRepository.resolveInitialStatus(PaymentModel.Method.BANK_QR));
-        assertEquals(PaymentModel.Status.PAID, PaymentRepository.resolveInitialStatus(PaymentModel.Method.E_WALLET));
+        assertEquals(PaymentModel.Status.UNPAID, PaymentService.resolveInitialStatus(PaymentModel.Method.COD));
+        assertEquals(PaymentModel.Status.PAID, PaymentService.resolveInitialStatus(PaymentModel.Method.BANK_QR));
+        assertEquals(PaymentModel.Status.PAID, PaymentService.resolveInitialStatus(PaymentModel.Method.E_WALLET));
     }
 
     @Test
     public void resolveStatusOnOrderCancelHandlesPaidAndUnpaid() {
-        assertEquals(PaymentModel.Status.REFUNDED, PaymentRepository.resolveStatusOnOrderCancel("PAID"));
-        assertEquals(PaymentModel.Status.REFUNDED, PaymentRepository.resolveStatusOnOrderCancel("paid"));
-        assertEquals(PaymentModel.Status.FAILED, PaymentRepository.resolveStatusOnOrderCancel("UNPAID"));
-        assertEquals(PaymentModel.Status.FAILED, PaymentRepository.resolveStatusOnOrderCancel("FAILED"));
-        assertEquals(PaymentModel.Status.FAILED, PaymentRepository.resolveStatusOnOrderCancel(null));
+        assertEquals(PaymentModel.Status.REFUNDED, PaymentService.resolveStatusOnOrderCancel("PAID"));
+        assertEquals(PaymentModel.Status.REFUNDED, PaymentService.resolveStatusOnOrderCancel("paid"));
+        assertEquals(PaymentModel.Status.FAILED, PaymentService.resolveStatusOnOrderCancel("UNPAID"));
+        assertEquals(PaymentModel.Status.FAILED, PaymentService.resolveStatusOnOrderCancel("FAILED"));
+        assertEquals(PaymentModel.Status.FAILED, PaymentService.resolveStatusOnOrderCancel(null));
     }
 
     @Test
     public void buildTransactionCodeOnlyGeneratesForPaidStatus() {
-        assertEquals("TXN-RN261123", PaymentRepository.buildTransactionCode(PaymentModel.Status.PAID, "RN261123"));
-        assertEquals("", PaymentRepository.buildTransactionCode(PaymentModel.Status.UNPAID, "RN261123"));
-        assertEquals("", PaymentRepository.buildTransactionCode(PaymentModel.Status.FAILED, "RN261123"));
-        assertEquals("", PaymentRepository.buildTransactionCode(PaymentModel.Status.REFUNDED, "RN261123"));
+        assertEquals("TXN-RN261123", PaymentService.buildTransactionCode(PaymentModel.Status.PAID, "RN261123"));
+        assertEquals("", PaymentService.buildTransactionCode(PaymentModel.Status.UNPAID, "RN261123"));
+        assertEquals("", PaymentService.buildTransactionCode(PaymentModel.Status.FAILED, "RN261123"));
+        assertEquals("", PaymentService.buildTransactionCode(PaymentModel.Status.REFUNDED, "RN261123"));
     }
 
     @Test

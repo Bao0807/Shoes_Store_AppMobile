@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.core.UiInsetHelper;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.chip.ChipGroup;
@@ -65,8 +66,21 @@ public class ProfileAddressActivity extends AppCompatActivity {
 
             @Override
             public void onSetDefault(ProfileAddressModel address) {
-                viewModel.setDefaultAddress(address.getId());
-                Toast.makeText(ProfileAddressActivity.this, "Đã đặt làm địa chỉ mặc định", Toast.LENGTH_SHORT).show();
+                viewModel.setDefaultAddress(address.getId(), new ResourceCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void data) {
+                        if (!isFinishing() && !isDestroyed()) {
+                            Toast.makeText(ProfileAddressActivity.this, "Đã đặt làm địa chỉ mặc định", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (!isFinishing() && !isDestroyed()) {
+                            Toast.makeText(ProfileAddressActivity.this, message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
             }
 
             @Override
@@ -76,8 +90,21 @@ public class ProfileAddressActivity extends AppCompatActivity {
 
             @Override
             public void onDeleteAddress(ProfileAddressModel address) {
-                viewModel.deleteAddress(address.getId());
-                Toast.makeText(ProfileAddressActivity.this, "Đã xóa địa chỉ", Toast.LENGTH_SHORT).show();
+                viewModel.deleteAddress(address.getId(), new ResourceCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void data) {
+                        if (!isFinishing() && !isDestroyed()) {
+                            Toast.makeText(ProfileAddressActivity.this, "Đã xóa địa chỉ", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (!isFinishing() && !isDestroyed()) {
+                            Toast.makeText(ProfileAddressActivity.this, message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
             }
         });
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -121,7 +148,22 @@ public class ProfileAddressActivity extends AppCompatActivity {
                             phone,
                             detail,
                             label,
-                            defaultCb.isChecked()
+                            defaultCb.isChecked(),
+                            new ResourceCallback<Void>() {
+                                @Override
+                                public void onSuccess(Void data) {
+                                    if (!isFinishing() && !isDestroyed()) {
+                                        Toast.makeText(ProfileAddressActivity.this, "Đã lưu địa chỉ giao hàng", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onError(String message) {
+                                    if (!isFinishing() && !isDestroyed()) {
+                                        Toast.makeText(ProfileAddressActivity.this, message, Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            }
                     );
                 })
                 .show();

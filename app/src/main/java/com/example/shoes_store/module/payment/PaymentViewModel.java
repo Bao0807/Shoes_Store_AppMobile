@@ -10,7 +10,7 @@ import com.example.shoes_store.core.ResourceCallback;
  */
 public class PaymentViewModel extends ViewModel {
 
-    private final PaymentRepository repository = new PaymentRepository();
+    private final PaymentRepository repository = PaymentRepository.getInstance();
 
     public void loadLatestPayment(@NonNull String orderId, @NonNull ResourceCallback<PaymentModel> callback) {
         repository.loadLatestPayment(orderId, callback);

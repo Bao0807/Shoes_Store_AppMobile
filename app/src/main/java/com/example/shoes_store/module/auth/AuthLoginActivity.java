@@ -20,10 +20,10 @@ import com.example.shoes_store.R;
 import com.example.shoes_store.core.AppPrefsHelper;
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.core.UiInsetHelper;
+import com.example.shoes_store.module.admin.AdminDashboardActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import com.google.firebase.auth.FirebaseUser;
 
 /**
  * Màn hình Đăng nhập bằng Email / Mật khẩu (hỗ trợ Guest-first quay về tab mục tiêu).
@@ -100,9 +100,22 @@ public class AuthLoginActivity extends AppCompatActivity {
                 return;
             }
 
-            viewModel.login(email, password, new ResourceCallback<FirebaseUser>() {
+            viewModel.loginAndResolveAdmin(email, password, new ResourceCallback<Boolean>() {
                 @Override
-                public void onSuccess(FirebaseUser data) {
+                public void onSuccess(Boolean isAdmin) {
+                    if (Boolean.TRUE.equals(isAdmin)) {
+                        Toast.makeText(
+                                AuthLoginActivity.this,
+                                "Xin chào Quản trị viên (Admin)",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                        MainActivity.markAdminAutoRouted();
+                        Intent adminIntent = new Intent(AuthLoginActivity.this, AdminDashboardActivity.class);
+                        adminIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        startActivity(adminIntent);
+                        finish();
+                        return;
+                    }
                     Toast.makeText(AuthLoginActivity.this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
                     navigateAfterLogin();
                 }

@@ -11,14 +11,14 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Tiện ích kiểm tra điều kiện đánh giá hợp lệ (chỉ người dùng thực có đơn COMPLETED chứa sản phẩm)
- * và tính điểm trung bình đánh giá.
+ * Nghiệp vụ thuần Java cho đánh giá sản phẩm: xác thực điều kiện người mua thực (đơn COMPLETED),
+ * kiểm tra đầu vào đánh giá và tính điểm trung bình sao.
  */
-public final class ProductReviewHelper {
+public final class ProductReviewService {
 
     public static final String LEGACY_SEED_USER_ID = "seed_runner";
 
-    private ProductReviewHelper() {
+    private ProductReviewService() {
     }
 
     public static double calculateAverageRating(@Nullable List<Double> ratings) {
@@ -43,6 +43,28 @@ public final class ProductReviewHelper {
         return !userId.isEmpty()
                 && !LEGACY_SEED_USER_ID.equalsIgnoreCase(userId)
                 && !orderId.isEmpty();
+    }
+
+    @Nullable
+    public static String validateReviewInput(
+            @Nullable String uid,
+            @Nullable String orderId,
+            float rating,
+            @Nullable String comment
+    ) {
+        if (uid == null || uid.trim().isEmpty()) {
+            return "Vui lòng đăng nhập để gửi đánh giá";
+        }
+        if (orderId == null || orderId.trim().isEmpty()) {
+            return "Chỉ khách hàng có đơn hàng hoàn tất mới được đánh giá";
+        }
+        if (rating < 1.0f || rating > 5.0f) {
+            return "Vui lòng chọn số sao từ 1 đến 5";
+        }
+        if (comment == null || comment.trim().isEmpty()) {
+            return "Vui lòng nhập nội dung đánh giá";
+        }
+        return null;
     }
 
     @Nullable

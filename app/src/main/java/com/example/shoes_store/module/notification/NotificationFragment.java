@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.order.OrderDetailActivity;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.google.android.material.chip.ChipGroup;
@@ -51,7 +52,18 @@ public class NotificationFragment extends Fragment {
         ChipGroup filterChips = view.findViewById(R.id.notif_filter_chips);
 
         adapter = new NotificationAdapter(item -> {
-            viewModel.markRead(item.getId());
+            viewModel.markRead(item.getId(), new ResourceCallback<Void>() {
+                @Override
+                public void onSuccess(Void data) {
+                }
+
+                @Override
+                public void onError(String message) {
+                    if (isAdded()) {
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
             if (item.getType() == NotificationModel.Type.ORDER && !item.getTargetId().isEmpty()) {
                 Intent intent = new Intent(requireContext(), OrderDetailActivity.class);
                 intent.putExtra(OrderDetailActivity.EXTRA_ORDER_CODE, item.getTargetId());
@@ -75,10 +87,22 @@ public class NotificationFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
 
-        view.findViewById(R.id.notif_mark_all_btn).setOnClickListener(v -> {
-            viewModel.markAllRead();
-            Toast.makeText(requireContext(), "Đã đánh dấu tất cả là đã đọc", Toast.LENGTH_SHORT).show();
-        });
+        view.findViewById(R.id.notif_mark_all_btn).setOnClickListener(v ->
+                viewModel.markAllRead(new ResourceCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void data) {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), "Đã đánh dấu tất cả là đã đọc", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }));
 
         filterChips.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (checkedIds.isEmpty()) {

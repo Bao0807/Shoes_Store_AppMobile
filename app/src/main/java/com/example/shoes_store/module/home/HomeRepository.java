@@ -1,140 +1,172 @@
 package com.example.shoes_store.module.home;
 
-import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
+import android.util.Log;
 
-import com.example.shoes_store.core.FirestoreStoreHelper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
+import com.example.shoes_store.core.AppPrefsHelper;
+import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.module.product.ProductModel;
+import com.example.shoes_store.module.product.ProductRepository;
+import com.example.shoes_store.module.profile.ProfileMapper;
 import com.example.shoes_store.module.profile.ProfileModel;
+import com.example.shoes_store.module.profile.ProfileRepository;
+import com.example.shoes_store.module.voucher.VoucherRepository;
+import com.example.shoes_store.module.wishlist.WishlistRepository;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 /**
- * Repository cho màn Trang chủ và Tìm kiếm/Lọc sản phẩm đọc từ Cloud Firestore.
+ * Repository sở hữu đồng bộ realtime Banner, lịch sử tìm kiếm và truy vấn lọc/sắp xếp Trang chủ.
  */
 public class HomeRepository {
 
-    private final FirestoreStoreHelper store = FirestoreStoreHelper.getInstance();
+    private static final String TAG = "HomeRepository";
+    private static volatile HomeRepository instance;
 
-    public LiveData<List<HomeBannerModel>> getBannersLiveData() {
-        return store.getBannersLiveData();
+    private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
+    private final MutableLiveData<List<HomeBannerModel>> bannersLiveData = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<String>> recentSearchesLiveData = new MutableLiveData<>(new ArrayList<>());
+    @Nullable
+    private ListenerRegistration bannersRegistration;
+
+    private HomeRepository() {
     }
 
-    public LiveData<List<ProductModel>> getProductsLiveData() {
-        return store.getProductsLiveData();
+    public static HomeRepository getInstance() {
+        if (instance == null) {
+            synchronized (HomeRepository.class) {
+                if (instance == null) {
+                    instance = new HomeRepository();
+                }
+            }
+        }
+        return instance;
     }
 
-    public LiveData<Set<String>> getFavoriteIdsLiveData() {
-        return store.getFavoriteIdsLiveData();
+    // ===== 1. REALTIME =====
+
+    public void initLocalSearches() {
+        recentSearchesLiveData.setValue(AppPrefsHelper.getRecentSearches());
     }
 
-    public LiveData<ProfileModel> getProfileLiveData() {
-        return store.getProfileLiveData();
-    }
-
-    public LiveData<List<String>> getRecentSearchesLiveData() {
-        return store.getRecentSearchesLiveData();
+    public void startPublicListening() {
+        if (bannersRegistration != null) {
+            bannersRegistration.remove();
+        }
+        bannersRegistration = provider.getFirestore()
+                .collection(FirebaseProviderHelper.COL_BANNERS)
+                .addSnapshotListener((snap, error) -> {
+                    if (error != null) {
+                        Log.w(TAG, "Banners listener error: " + error.getMessage());
+                    }
+                    if (snap == null) {
+                        return;
+                    }
+                    List<HomeBannerModel> list = new ArrayList<>();
+                    for (DocumentSnapshot doc : snap.getDocuments()) {
+                        HomeBannerModel banner = HomeBannerMapper.fromSnapshot(doc);
+                        if (banner.isActive()) {
+                            list.add(banner);
+                        }
+                    }
+                    Collections.sort(list, Comparator.comparingInt(HomeBannerModel::getDisplayOrder));
+                    bannersLiveData.setValue(list);
+                });
     }
 
     public void refreshPublicCatalog() {
-        store.refreshPublicCatalog();
+        provider.getFirestore().collection(FirebaseProviderHelper.COL_BANNERS).get();
+        ProductRepository.getInstance().refreshPublicCatalog();
+        VoucherRepository.getInstance().refreshPublicCatalog();
     }
 
-    public boolean toggleFavorite(@NonNull String productId) {
-        return store.toggleFavorite(productId);
+    public void applyRemoteRecentSearches(@NonNull List<String> remoteSearches) {
+        if (!remoteSearches.isEmpty()) {
+            AppPrefsHelper.replaceRecentSearches(remoteSearches);
+            recentSearchesLiveData.setValue(remoteSearches);
+        }
     }
 
-    public void addRecentSearch(@NonNull String query) {
-        store.addRecentSearch(query);
+    public void resetRecentSearchesFromLocal() {
+        recentSearchesLiveData.setValue(AppPrefsHelper.getRecentSearches());
     }
 
-    public void removeRecentSearch(@NonNull String query) {
-        store.removeRecentSearch(query);
+    // ===== 2. ĐỌC =====
+
+    public LiveData<List<HomeBannerModel>> getBannersLiveData() {
+        return bannersLiveData;
+    }
+
+    public LiveData<List<ProductModel>> getProductsLiveData() {
+        return ProductRepository.getInstance().getProductsLiveData();
+    }
+
+    public LiveData<Set<String>> getFavoriteIdsLiveData() {
+        return WishlistRepository.getInstance().getFavoriteIdsLiveData();
+    }
+
+    public LiveData<ProfileModel> getProfileLiveData() {
+        return ProfileRepository.getInstance().getProfileLiveData();
+    }
+
+    public LiveData<List<String>> getRecentSearchesLiveData() {
+        return recentSearchesLiveData;
     }
 
     @NonNull
     public List<String> getAvailableCategories() {
-        Set<String> seen = new LinkedHashSet<>();
-        seen.add(HomeFilterState.ALL);
-        List<ProductModel> products = store.getAllProducts();
-        if (products.isEmpty()) {
-            seen.addAll(Arrays.asList("Daily", "Race", "Tempo", "Trail", "Recovery"));
-        } else {
-            for (ProductModel p : products) {
-                String cat = p.getCategory().trim();
-                if (!cat.isEmpty()) {
-                    seen.add(cat);
-                }
-            }
-        }
-        return new ArrayList<>(seen);
+        return HomeSearchService.getAvailableCategories(ProductRepository.getInstance().getAllProducts());
     }
 
     @NonNull
     public List<String> getAvailableBrands() {
-        Set<String> seen = new LinkedHashSet<>();
-        seen.add(HomeFilterState.ALL);
-        List<ProductModel> products = store.getAllProducts();
-        if (products.isEmpty()) {
-            seen.addAll(Arrays.asList("Nike", "ASICS", "HOKA", "Adidas", "Saucony", "Brooks"));
-        } else {
-            for (ProductModel p : products) {
-                String brand = p.getBrand().trim();
-                if (!brand.isEmpty()) {
-                    seen.add(brand);
-                }
-            }
-        }
-        return new ArrayList<>(seen);
+        return HomeSearchService.getAvailableBrands(ProductRepository.getInstance().getAllProducts());
     }
 
+    @NonNull
     public List<ProductModel> filterAndSort(@NonNull HomeFilterState state) {
-        List<ProductModel> source = store.getAllProducts();
-        List<ProductModel> filtered = new ArrayList<>();
-        String queryLower = state.getQuery().trim().toLowerCase(Locale.getDefault());
+        return HomeSearchService.filterAndSort(ProductRepository.getInstance().getAllProducts(), state);
+    }
 
-        for (ProductModel p : source) {
-            if (!state.isAllCategoriesSelected() && !state.isCategorySelected(p.getCategory())) {
-                continue;
-            }
-            if (!state.isAllBrandsSelected() && !state.isBrandSelected(p.getBrand())) {
-                continue;
-            }
-            if (p.getPrice() < state.getMinPrice() || p.getPrice() > state.getMaxPrice()) {
-                continue;
-            }
-            if (!queryLower.isEmpty()) {
-                String haystack = (p.getName() + " " + p.getBrand() + " " + p.getCategory())
-                        .toLowerCase(Locale.getDefault());
-                if (!haystack.contains(queryLower)) {
-                    continue;
-                }
-            }
-            filtered.add(p);
-        }
+    // ===== 3. GHI =====
 
-        switch (state.getSortOption()) {
-            case PRICE_ASC:
-                Collections.sort(filtered, Comparator.comparingLong(ProductModel::getPrice));
-                break;
-            case PRICE_DESC:
-                Collections.sort(filtered, (a, b) -> Long.compare(b.getPrice(), a.getPrice()));
-                break;
-            case RATING_DESC:
-                Collections.sort(filtered, (a, b) -> Double.compare(b.getRating(), a.getRating()));
-                break;
-            case POPULAR:
-            default:
-                Collections.sort(filtered, (a, b) -> Integer.compare(b.getReviewCount(), a.getReviewCount()));
-                break;
+    public boolean toggleFavorite(@NonNull String productId) {
+        return WishlistRepository.getInstance().toggleFavorite(productId);
+    }
+
+    public void addRecentSearch(@NonNull String query) {
+        List<String> updated = AppPrefsHelper.addRecentSearch(query);
+        recentSearchesLiveData.setValue(updated);
+        syncRecentSearchesToFirestore(updated);
+    }
+
+    public void removeRecentSearch(@NonNull String query) {
+        List<String> updated = AppPrefsHelper.removeRecentSearch(query);
+        recentSearchesLiveData.setValue(updated);
+        syncRecentSearchesToFirestore(updated);
+    }
+
+    // ===== 4. PRIVATE HELPERS =====
+
+    private void syncRecentSearchesToFirestore(@NonNull List<String> updated) {
+        String uid = provider.getCurrentUid();
+        if (uid == null) {
+            return;
         }
-        return filtered;
+        provider.getFirestore()
+                .collection(FirebaseProviderHelper.COL_USERS)
+                .document(uid)
+                .update(ProfileMapper.FIELD_RECENT_SEARCHES, updated)
+                .addOnFailureListener(e -> Log.w(TAG, "Sync recentSearches failed: " + e.getMessage()));
     }
 }

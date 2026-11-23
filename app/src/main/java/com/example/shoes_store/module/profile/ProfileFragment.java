@@ -19,10 +19,12 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AvatarImageHelper;
+import com.example.shoes_store.module.admin.AdminDashboardActivity;
+import com.example.shoes_store.module.admin.AdminService;
 import com.example.shoes_store.module.auth.AuthRepository;
-import com.example.shoes_store.module.cart.CartVoucherModel;
 import com.example.shoes_store.module.order.OrderHistoryActivity;
 import com.example.shoes_store.module.order.OrderModel;
+import com.example.shoes_store.module.voucher.VoucherModel;
 import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.List;
@@ -46,8 +48,12 @@ public class ProfileFragment extends Fragment {
         ShapeableImageView avatarView = view.findViewById(R.id.profile_avatar);
         TextView nameView = view.findViewById(R.id.profile_name);
         TextView runnerSummaryView = view.findViewById(R.id.profile_runner_summary);
+        View adminCard = view.findViewById(R.id.profile_admin_card);
         TextView pendingBadge = view.findViewById(R.id.badge_order_pending);
         TextView shippingBadge = view.findViewById(R.id.badge_order_shipping);
+
+        adminCard.setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), AdminDashboardActivity.class)));
 
         View.OnClickListener openEditProfile = v ->
                 startActivity(new Intent(requireContext(), ProfileEditActivity.class));
@@ -70,13 +76,13 @@ public class ProfileFragment extends Fragment {
         });
 
         view.findViewById(R.id.menu_vouchers).setOnClickListener(v -> {
-            List<CartVoucherModel> vouchers = viewModel.getVouchers();
+            List<VoucherModel> vouchers = viewModel.getVouchers();
             String message;
             if (vouchers == null || vouchers.isEmpty()) {
                 message = "Hiện chưa có mã giảm giá khả dụng";
             } else {
                 StringBuilder sb = new StringBuilder();
-                for (CartVoucherModel voucher : vouchers) {
+                for (VoucherModel voucher : vouchers) {
                     if (sb.length() > 0) {
                         sb.append("\n\n");
                     }
@@ -125,7 +131,7 @@ public class ProfileFragment extends Fragment {
                         .setMessage("Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại?")
                         .setNegativeButton("Hủy", null)
                         .setPositiveButton(R.string.auth_logout, (dialog, which) -> {
-                            new AuthRepository().logout();
+                            AuthRepository.getInstance().logout();
                             Toast.makeText(requireContext(), "Đã đăng xuất", Toast.LENGTH_SHORT).show();
                             if (getActivity() instanceof MainActivity) {
                                 ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
@@ -140,6 +146,8 @@ public class ProfileFragment extends Fragment {
             AvatarImageHelper.bindAvatar(avatarView, profile);
             nameView.setText(profile.getFullName());
             runnerSummaryView.setText("Size EU " + profile.getPreferredSize() + " · " + profile.getRunningGoal());
+            boolean isAdmin = AdminService.isAdminRole(profile.getRole());
+            adminCard.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getOrdersLiveData().observe(getViewLifecycleOwner(), orders -> {

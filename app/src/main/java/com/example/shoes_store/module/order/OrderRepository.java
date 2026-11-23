@@ -1,31 +1,49 @@
 package com.example.shoes_store.module.order;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 
 import com.example.shoes_store.core.FirebaseProviderHelper;
-import com.example.shoes_store.core.FirestoreStoreHelper;
+import com.example.shoes_store.core.FirestoreReadUtil;
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.cart.CartItemModel;
-import com.example.shoes_store.module.cart.CartVoucherModel;
-import com.example.shoes_store.module.notification.NotificationModel;
+import com.example.shoes_store.module.cart.CartMapper;
+import com.example.shoes_store.module.cart.CartRepository;
+import com.example.shoes_store.module.cart.CartService;
+import com.example.shoes_store.module.notification.NotificationRepository;
+import com.example.shoes_store.module.payment.PaymentMapper;
 import com.example.shoes_store.module.payment.PaymentModel;
 import com.example.shoes_store.module.payment.PaymentRepository;
+import com.example.shoes_store.module.payment.PaymentService;
+import com.example.shoes_store.module.product.ProductMapper;
 import com.example.shoes_store.module.product.ProductModel;
+import com.example.shoes_store.module.product.ProductRepository;
 import com.example.shoes_store.module.product.ProductVariantModel;
 import com.example.shoes_store.module.profile.ProfileAddressModel;
+import com.example.shoes_store.module.profile.ProfileRepository;
+import com.example.shoes_store.module.voucher.VoucherMapper;
+import com.example.shoes_store.module.voucher.VoucherModel;
+import com.example.shoes_store.module.voucher.VoucherRepository;
+import com.example.shoes_store.module.voucher.VoucherService;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.Transaction;
 import com.google.firebase.firestore.WriteBatch;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,39 +51,101 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Repository cho Đặt hàng và Hủy đơn với Firestore Transaction nguyên tử, phối hợp cùng {@link PaymentRepository}.
+ * Repository sở hữu Đơn hàng (`orders`): đồng bộ realtime, Transaction đặt/hủy đơn và mua lại có kiểm tồn kho.
  */
 public class OrderRepository {
 
-    private final FirestoreStoreHelper store = FirestoreStoreHelper.getInstance();
+    private static final String TAG = "OrderRepository";
+    private static volatile OrderRepository instance;
+
     private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
-    private final PaymentRepository paymentRepository = new PaymentRepository();
-
+    private final MutableLiveData<List<OrderModel>> ordersLiveData = new MutableLiveData<>(new ArrayList<>());
     @Nullable
-    public ProductModel getProductById(@Nullable String productId) {
-        return store.getProductById(productId);
+    private ListenerRegistration ordersRegistration;
+
+    private OrderRepository() {
     }
 
-    public List<CartItemModel> getSelectedCartItems() {
-        return store.getSelectedCartItems();
+    public static OrderRepository getInstance() {
+        if (instance == null) {
+            synchronized (OrderRepository.class) {
+                if (instance == null) {
+                    instance = new OrderRepository();
+                }
+            }
+        }
+        return instance;
     }
 
-    @Nullable
-    public ProfileAddressModel getDefaultAddress() {
-        return store.getDefaultAddress();
+    // ===== 1. REALTIME =====
+
+    public void startUserListening(@NonNull String uid) {
+        stopUserListening();
+        ordersRegistration = provider.getFirestore()
+                .collection(FirebaseProviderHelper.COL_ORDERS)
+                .whereEqualTo(OrderMapper.FIELD_USER_ID, uid)
+                .addSnapshotListener((snap, error) -> {
+                    if (error != null) {
+                        Log.w(TAG, "Orders listener error: " + error.getMessage());
+                    }
+                    if (snap == null) {
+                        return;
+                    }
+                    List<OrderModel> list = new ArrayList<>();
+                    for (DocumentSnapshot doc : snap.getDocuments()) {
+                        list.add(OrderMapper.fromSnapshot(doc));
+                    }
+                    Collections.sort(list, (a, b) -> Long.compare(b.getCreatedAtMillis(), a.getCreatedAtMillis()));
+                    ordersLiveData.setValue(list);
+                });
     }
 
-    @Nullable
-    public ProfileAddressModel findAddressById(@Nullable String addressId) {
-        return store.findAddressById(addressId);
+    public void stopUserListening() {
+        if (ordersRegistration != null) {
+            ordersRegistration.remove();
+            ordersRegistration = null;
+        }
+        ordersLiveData.setValue(new ArrayList<>());
     }
 
-    public LiveData<List<ProfileAddressModel>> getAddressesLiveData() {
-        return store.getAddressesLiveData();
-    }
+    // ===== 2. ĐỌC =====
 
     public LiveData<List<OrderModel>> getOrdersLiveData() {
-        return store.getOrdersLiveData();
+        return ordersLiveData;
+    }
+
+    @Nullable
+    public OrderModel getOrderById(@Nullable String orderId) {
+        if (orderId == null) {
+            return null;
+        }
+        List<OrderModel> list = ordersLiveData.getValue();
+        if (list == null) {
+            return null;
+        }
+        for (OrderModel order : list) {
+            if (orderId.equals(order.getOrderId())) {
+                return order;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    public OrderModel getOrderByCode(@Nullable String orderCode) {
+        if (orderCode == null) {
+            return null;
+        }
+        List<OrderModel> list = ordersLiveData.getValue();
+        if (list == null) {
+            return null;
+        }
+        for (OrderModel order : list) {
+            if (orderCode.equals(order.getOrderCode()) || orderCode.equals(order.getOrderId())) {
+                return order;
+            }
+        }
+        return null;
     }
 
     @Nullable
@@ -73,30 +153,47 @@ public class OrderRepository {
         if (orderIdOrCode == null) {
             return null;
         }
-        OrderModel byId = store.getOrderById(orderIdOrCode);
-        return byId != null ? byId : store.getOrderByCode(orderIdOrCode);
-    }
-
-    public List<CartVoucherModel> getVouchers() {
-        return store.getVouchers();
-    }
-
-    public LiveData<List<CartVoucherModel>> getVouchersLiveData() {
-        return store.getVouchersLiveData();
+        OrderModel byId = getOrderById(orderIdOrCode);
+        return byId != null ? byId : getOrderByCode(orderIdOrCode);
     }
 
     @Nullable
-    public CartVoucherModel findVoucherByCode(@Nullable String code) {
-        if (code == null) {
-            return null;
-        }
-        for (CartVoucherModel voucher : store.getVouchers()) {
-            if (voucher.getCode().equalsIgnoreCase(code)) {
-                return voucher;
-            }
-        }
-        return null;
+    public ProductModel getProductById(@Nullable String productId) {
+        return ProductRepository.getInstance().getProductById(productId);
     }
+
+    public List<CartItemModel> getSelectedCartItems() {
+        return CartRepository.getInstance().getSelectedCartItems();
+    }
+
+    @Nullable
+    public ProfileAddressModel getDefaultAddress() {
+        return ProfileRepository.getInstance().getDefaultAddress();
+    }
+
+    @Nullable
+    public ProfileAddressModel findAddressById(@Nullable String addressId) {
+        return ProfileRepository.getInstance().findAddressById(addressId);
+    }
+
+    public LiveData<List<ProfileAddressModel>> getAddressesLiveData() {
+        return ProfileRepository.getInstance().getAddressesLiveData();
+    }
+
+    public List<VoucherModel> getVouchers() {
+        return VoucherRepository.getInstance().getVouchers();
+    }
+
+    public LiveData<List<VoucherModel>> getVouchersLiveData() {
+        return VoucherRepository.getInstance().getVouchersLiveData();
+    }
+
+    @Nullable
+    public VoucherModel findVoucherByCode(@Nullable String code) {
+        return VoucherRepository.getInstance().findByCode(code);
+    }
+
+    // ===== 3. GHI / TRANSACTION =====
 
     public void placeOrder(
             @NonNull List<CartItemModel> items,
@@ -133,8 +230,419 @@ public class OrderRepository {
         ));
     }
 
+    public void cancelOrder(@NonNull String orderId, @NonNull ResourceCallback<Void> callback) {
+        String uid = provider.getCurrentUid();
+        if (uid == null) {
+            callback.onError("Vui lòng đăng nhập");
+            return;
+        }
+        FirebaseFirestore db = provider.getFirestore();
+
+        // Truy vấn Payment Reference qua PaymentRepository trước khi vào Transaction (Firestore không hỗ trợ Query trong Transaction)
+        PaymentRepository.getInstance().findLatestPaymentRef(orderId, uid, new ResourceCallback<DocumentReference>() {
+            @Override
+            public void onSuccess(DocumentReference latestPaymentRef) {
+                runCancelOrderTransaction(db, uid, orderId, latestPaymentRef, callback);
+            }
+
+            @Override
+            public void onError(String message) {
+                runCancelOrderTransaction(db, uid, orderId, null, callback);
+            }
+        });
+    }
+
+    public void reorder(@NonNull OrderModel order, @NonNull ResourceCallback<Integer> callback) {
+        String uid = provider.getCurrentUid();
+        if (uid == null) {
+            callback.onError("Vui lòng đăng nhập");
+            return;
+        }
+        List<OrderItemModel> items = order.getOrderItems();
+        if (items.isEmpty()) {
+            callback.onError("Đơn hàng không có sản phẩm");
+            return;
+        }
+
+        FirebaseFirestore db = provider.getFirestore();
+        ProductRepository productRepo = ProductRepository.getInstance();
+
+        List<OrderItemModel> activeItems = new ArrayList<>();
+        List<Task<QuerySnapshot>> variantTasks = new ArrayList<>();
+        for (OrderItemModel item : items) {
+            if (productRepo.getProductById(item.getProductId()) == null) {
+                continue;
+            }
+            activeItems.add(item);
+            variantTasks.add(db.collection(FirebaseProviderHelper.COL_PRODUCTS)
+                    .document(item.getProductId())
+                    .collection(FirebaseProviderHelper.SUB_VARIANTS)
+                    .get());
+        }
+        if (activeItems.isEmpty()) {
+            callback.onError("Sản phẩm trong đơn hiện không còn kinh doanh");
+            return;
+        }
+
+        Tasks.whenAllComplete(variantTasks)
+                .addOnCompleteListener(all -> commitReorderBatch(db, uid, activeItems, variantTasks, callback));
+    }
+
+    // ===== 4. PRIVATE HELPERS =====
+
+    private void executePlaceOrderTransaction(
+            @NonNull String uid,
+            @NonNull List<CartItemModel> items,
+            @NonNull ProfileAddressModel address,
+            @NonNull String shippingMethod,
+            long shippingFee,
+            @NonNull PaymentModel.Method paymentMethod,
+            @Nullable String voucherCode,
+            long requestedDiscount,
+            boolean removeFromCart,
+            @NonNull ResourceCallback<OrderModel> callback
+    ) {
+        FirebaseFirestore db = provider.getFirestore();
+        String cleanVoucher = voucherCode != null ? voucherCode.trim().toUpperCase(Locale.ROOT) : "";
+        PaymentRepository paymentRepository = PaymentRepository.getInstance();
+
+        db.runTransaction(transaction -> {
+            // B1. ĐỌC tồn kho các biến thể và voucher
+            Map<String, DocumentReference> variantRefs = new LinkedHashMap<>();
+            Map<String, String> itemLabelByKey = new LinkedHashMap<>();
+            List<OrderItemModel> orderItems = new ArrayList<>();
+            long subtotal = OrderService.calculateSubtotal(items);
+
+            for (CartItemModel item : items) {
+                if (item.getVariantId().isEmpty()) {
+                    throw abort("Không xác định được biến thể cho " + item.getProduct().getName() + " (EU " + item.getSize() + ")");
+                }
+                String key = OrderService.buildVariantKey(item.getProduct().getId(), item.getVariantId());
+                if (!variantRefs.containsKey(key)) {
+                    variantRefs.put(key, variantDocRef(db, item.getProduct().getId(), item.getVariantId()));
+                    itemLabelByKey.put(key, item.getProduct().getName() + " (EU " + item.getSize() + ")");
+                }
+                orderItems.add(OrderItemModel.fromCartItem(item));
+            }
+
+            Map<String, Integer> requestedQtyByKey = OrderService.aggregateRequestedQuantities(items);
+            Map<String, Integer> currentStockByKey = new LinkedHashMap<>();
+            for (Map.Entry<String, DocumentReference> entry : variantRefs.entrySet()) {
+                DocumentSnapshot snap = transaction.get(entry.getValue());
+                if (snap.exists()) {
+                    currentStockByKey.put(entry.getKey(), FirestoreReadUtil.readInt(snap, ProductMapper.FIELD_STOCK_QTY, 0));
+                }
+            }
+
+            DocumentReference voucherRef = null;
+            DocumentSnapshot voucherSnap = null;
+            if (!cleanVoucher.isEmpty()) {
+                voucherRef = db.collection(FirebaseProviderHelper.COL_VOUCHERS).document(cleanVoucher);
+                voucherSnap = transaction.get(voucherRef);
+            }
+
+            // B2. KIỂM TRA quy tắc nghiệp vụ
+            String stockError = OrderService.validateStockSufficiency(requestedQtyByKey, currentStockByKey, itemLabelByKey);
+            if (stockError != null) {
+                throw abort(stockError);
+            }
+
+            long effectiveDiscount = 0L;
+            long nextVoucherUsedCount = 0L;
+            if (voucherRef != null) {
+                if (voucherSnap == null || !voucherSnap.exists()) {
+                    throw abort("Mã giảm giá " + cleanVoucher + " không tồn tại");
+                }
+                boolean active = FirestoreReadUtil.readBoolean(voucherSnap, VoucherMapper.FIELD_IS_ACTIVE, false);
+                long minOrder = FirestoreReadUtil.readLong(voucherSnap, VoucherMapper.FIELD_MIN_ORDER_AMOUNT, 0L);
+                long voucherDiscount = FirestoreReadUtil.readLong(voucherSnap, VoucherMapper.FIELD_DISCOUNT_AMOUNT, requestedDiscount);
+                long usageLimit = FirestoreReadUtil.readLong(voucherSnap, VoucherMapper.FIELD_USAGE_LIMIT, 0L);
+                long usedCount = FirestoreReadUtil.readLong(voucherSnap, VoucherMapper.FIELD_USED_COUNT, 0L);
+                long expiryMillis = FirestoreReadUtil.readMillis(voucherSnap, VoucherMapper.FIELD_EXPIRY_DATE);
+
+                String voucherError = VoucherService.validateVoucherSnapshotForTransaction(
+                        active, expiryMillis, System.currentTimeMillis(), minOrder, usageLimit, usedCount, subtotal, cleanVoucher
+                );
+                if (voucherError != null) {
+                    throw abort(voucherError);
+                }
+                effectiveDiscount = Math.min(voucherDiscount, subtotal);
+                nextVoucherUsedCount = usedCount + 1L;
+            }
+
+            // B3. GHI nguyên tử
+            Timestamp now = Timestamp.now();
+            long nowMillis = now.toDate().getTime();
+
+            for (Map.Entry<String, DocumentReference> entry : variantRefs.entrySet()) {
+                int currentStock = currentStockByKey.getOrDefault(entry.getKey(), 0);
+                int needed = requestedQtyByKey.getOrDefault(entry.getKey(), 0);
+                transaction.update(entry.getValue(), ProductMapper.FIELD_STOCK_QTY, Math.max(0, currentStock - needed));
+            }
+            if (voucherRef != null) {
+                transaction.update(voucherRef, VoucherMapper.FIELD_USED_COUNT, nextVoucherUsedCount);
+            }
+
+            long total = OrderService.calculateTotal(subtotal, shippingFee, effectiveDiscount);
+            DocumentReference orderRef = db.collection(FirebaseProviderHelper.COL_ORDERS).document();
+            String orderId = orderRef.getId();
+            String orderCode = OrderService.generateOrderCode(nowMillis);
+
+            transaction.set(orderRef, OrderMapper.orderToMap(
+                    orderId, orderCode, uid, paymentMethod, address, shippingMethod, cleanVoucher,
+                    orderItems, subtotal, shippingFee, effectiveDiscount, total, now
+            ));
+
+            DocumentReference paymentRef = paymentRepository.newPaymentDocumentRef(db);
+            transaction.set(paymentRef, PaymentRepository.buildPaymentData(
+                    paymentRef.getId(), orderId, uid, paymentMethod, total, orderCode, now
+            ));
+
+            if (removeFromCart) {
+                CollectionReference cartRef = db.collection(FirebaseProviderHelper.COL_USERS)
+                        .document(uid)
+                        .collection(FirebaseProviderHelper.SUB_CART);
+                for (CartItemModel item : items) {
+                    if (!item.getId().isEmpty() && !item.getId().startsWith("direct_")) {
+                        transaction.delete(cartRef.document(item.getId()));
+                    }
+                }
+            }
+
+            DocumentReference notifRef = db.collection(FirebaseProviderHelper.COL_USERS)
+                    .document(uid)
+                    .collection(FirebaseProviderHelper.SUB_NOTIFICATIONS)
+                    .document();
+            transaction.set(notifRef, NotificationRepository.buildOrderNotificationData(
+                    notifRef.getId(),
+                    uid,
+                    "Đặt hàng #" + orderCode + " thành công",
+                    "Đơn hàng đang chờ xác nhận (" + paymentMethod.getLabel() + ").",
+                    orderCode,
+                    now
+            ));
+
+            return new OrderModel(
+                    orderId,
+                    orderCode,
+                    uid,
+                    OrderModel.Status.PENDING,
+                    paymentMethod,
+                    orderItems,
+                    address.getAddressDetail(),
+                    address.getReceiverName() + " · " + address.getPhone(),
+                    shippingMethod,
+                    cleanVoucher,
+                    subtotal,
+                    shippingFee,
+                    effectiveDiscount,
+                    total,
+                    nowMillis,
+                    nowMillis
+            );
+        }).addOnSuccessListener(callback::onSuccess)
+          .addOnFailureListener(e -> callback.onError(
+                  e.getMessage() != null ? e.getMessage() : "Không thể đặt hàng, vui lòng thử lại"
+          ));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void runCancelOrderTransaction(
+            @NonNull FirebaseFirestore db,
+            @NonNull String uid,
+            @NonNull String orderId,
+            @Nullable DocumentReference paymentRef,
+            @NonNull ResourceCallback<Void> callback
+    ) {
+        DocumentReference orderRef = db.collection(FirebaseProviderHelper.COL_ORDERS).document(orderId);
+
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+            // B1. ĐỌC toàn bộ trước khi ghi
+            DocumentSnapshot orderSnap = transaction.get(orderRef);
+            if (!orderSnap.exists()) {
+                throw abort("Không tìm thấy đơn hàng");
+            }
+            String statusStr = FirestoreReadUtil.readString(orderSnap, OrderMapper.FIELD_STATUS, "PENDING");
+            if (!OrderService.canCancelStatus(statusStr)) {
+                throw abort("Chỉ có thể hủy đơn đang chờ xác nhận");
+            }
+            String orderCode = FirestoreReadUtil.readString(orderSnap, OrderMapper.FIELD_ORDER_CODE, orderId);
+            String voucherCode = FirestoreReadUtil.readString(orderSnap, OrderMapper.FIELD_VOUCHER_CODE, "")
+                    .trim().toUpperCase(Locale.ROOT);
+
+            Map<String, DocumentReference> variantRefs = new LinkedHashMap<>();
+            Map<String, Integer> restoreQtyByKey = new LinkedHashMap<>();
+            Object rawItems = orderSnap.get(OrderMapper.FIELD_ITEMS);
+            if (rawItems instanceof List<?>) {
+                for (Object obj : (List<?>) rawItems) {
+                    if (obj instanceof Map<?, ?>) {
+                        Map<?, ?> m = (Map<?, ?>) obj;
+                        String productId = FirestoreReadUtil.mapString(m, OrderMapper.ITEM_PRODUCT_ID, "");
+                        String variantId = FirestoreReadUtil.mapString(m, OrderMapper.ITEM_VARIANT_ID, "");
+                        int qty = FirestoreReadUtil.mapInt(m, OrderMapper.ITEM_QUANTITY, 1);
+                        if (!productId.isEmpty() && !variantId.isEmpty()) {
+                            String key = OrderService.buildVariantKey(productId, variantId);
+                            variantRefs.put(key, variantDocRef(db, productId, variantId));
+                            restoreQtyByKey.put(key, restoreQtyByKey.getOrDefault(key, 0) + qty);
+                        }
+                    }
+                }
+            }
+
+            Map<String, Integer> currentStockByKey = new LinkedHashMap<>();
+            for (Map.Entry<String, DocumentReference> entry : variantRefs.entrySet()) {
+                DocumentSnapshot vSnap = transaction.get(entry.getValue());
+                if (vSnap.exists()) {
+                    currentStockByKey.put(entry.getKey(), FirestoreReadUtil.readInt(vSnap, ProductMapper.FIELD_STOCK_QTY, 0));
+                }
+            }
+
+            DocumentSnapshot paymentSnap = paymentRef != null ? transaction.get(paymentRef) : null;
+            DocumentReference voucherRef = !voucherCode.isEmpty()
+                    ? db.collection(FirebaseProviderHelper.COL_VOUCHERS).document(voucherCode)
+                    : null;
+            DocumentSnapshot voucherSnap = voucherRef != null ? transaction.get(voucherRef) : null;
+
+            // B2. GHI đồng bộ (hủy đơn, hoàn kho, hoàn lượt voucher, cập nhật thanh toán, tạo thông báo)
+            Timestamp now = Timestamp.now();
+            transaction.update(
+                    orderRef,
+                    OrderMapper.FIELD_STATUS, OrderModel.Status.CANCELLED.name(),
+                    OrderMapper.FIELD_UPDATED_AT, now
+            );
+
+            for (Map.Entry<String, Integer> stockEntry : currentStockByKey.entrySet()) {
+                DocumentReference vRef = variantRefs.get(stockEntry.getKey());
+                int addQty = restoreQtyByKey.getOrDefault(stockEntry.getKey(), 0);
+                if (vRef != null && addQty > 0) {
+                    transaction.update(
+                            vRef,
+                            ProductMapper.FIELD_STOCK_QTY,
+                            OrderService.computeRestoredStock(stockEntry.getValue(), addQty)
+                    );
+                }
+            }
+
+            if (voucherSnap != null && voucherSnap.exists()) {
+                long currentUsed = FirestoreReadUtil.readLong(voucherSnap, VoucherMapper.FIELD_USED_COUNT, 0L);
+                transaction.update(
+                        voucherSnap.getReference(),
+                        VoucherMapper.FIELD_USED_COUNT,
+                        OrderService.computeNextVoucherUsedCountOnCancel(currentUsed)
+                );
+            }
+
+            if (paymentSnap != null && paymentSnap.exists()) {
+                String currentPayStatus = FirestoreReadUtil.readString(paymentSnap, PaymentMapper.FIELD_STATUS, "UNPAID");
+                PaymentModel.Status nextPayStatus = PaymentService.resolveStatusOnOrderCancel(currentPayStatus);
+                transaction.update(paymentSnap.getReference(), PaymentMapper.FIELD_STATUS, nextPayStatus.name());
+            }
+
+            DocumentReference notifRef = db.collection(FirebaseProviderHelper.COL_USERS)
+                    .document(uid)
+                    .collection(FirebaseProviderHelper.SUB_NOTIFICATIONS)
+                    .document();
+            transaction.set(notifRef, NotificationRepository.buildOrderNotificationData(
+                    notifRef.getId(),
+                    uid,
+                    "Đơn #" + orderCode + " đã được hủy",
+                    "Số lượng sản phẩm đã được hoàn lại vào kho của cửa hàng.",
+                    orderCode,
+                    now
+            ));
+
+            return null;
+        }).addOnSuccessListener(unused -> callback.onSuccess(null))
+          .addOnFailureListener(e -> callback.onError(
+                  e.getMessage() != null ? e.getMessage() : "Không thể hủy đơn hàng"
+          ));
+    }
+
+    private void commitReorderBatch(
+            @NonNull FirebaseFirestore db,
+            @NonNull String uid,
+            @NonNull List<OrderItemModel> activeItems,
+            @NonNull List<Task<QuerySnapshot>> variantTasks,
+            @NonNull ResourceCallback<Integer> callback
+    ) {
+        CollectionReference cartRef = db.collection(FirebaseProviderHelper.COL_USERS)
+                .document(uid)
+                .collection(FirebaseProviderHelper.SUB_CART);
+
+        List<CartItemModel> existingCart = CartRepository.getInstance().getCurrentCartItems();
+        Map<String, Integer> pendingQtyByCartDoc = new HashMap<>();
+        WriteBatch batch = db.batch();
+        Timestamp now = Timestamp.now();
+        int addedCount = 0;
+        boolean hitStockLimit = false;
+
+        for (int i = 0; i < activeItems.size(); i++) {
+            OrderItemModel item = activeItems.get(i);
+            Task<QuerySnapshot> task = variantTasks.get(i);
+            if (!task.isSuccessful() || task.getResult() == null) {
+                continue;
+            }
+            ProductVariantModel matched = null;
+            for (DocumentSnapshot doc : task.getResult().getDocuments()) {
+                ProductVariantModel v = ProductMapper.variantFromSnapshot(doc, item.getProductId());
+                if ((!item.getVariantId().isEmpty() && item.getVariantId().equals(v.getVariantId()))
+                        || (v.getSize().equalsIgnoreCase(item.getSize()) && v.getColorName().equalsIgnoreCase(item.getColorName()))) {
+                    matched = v;
+                    break;
+                }
+            }
+            if (matched == null || !matched.isInStock()) {
+                hitStockLimit = true;
+                continue;
+            }
+
+            CartItemModel existing = CartService.findMatchingItem(
+                    existingCart, item.getProductId(), matched.getVariantId(), item.getSize(), item.getColorName()
+            );
+            int requested = Math.max(1, item.getQuantity());
+            if (existing != null) {
+                int currentInCart = pendingQtyByCartDoc.getOrDefault(existing.getId(), existing.getQuantity());
+                int available = matched.getStockQty() - currentInCart;
+                if (available <= 0) {
+                    hitStockLimit = true;
+                    continue;
+                }
+                int addQty = Math.min(requested, available);
+                int nextQty = currentInCart + addQty;
+                pendingQtyByCartDoc.put(existing.getId(), nextQty);
+                batch.update(cartRef.document(existing.getId()), CartMapper.cartMergeUpdateMap(nextQty, now));
+                addedCount++;
+            } else {
+                int addQty = Math.min(requested, matched.getStockQty());
+                DocumentReference docRef = cartRef.document();
+                batch.set(docRef, CartMapper.cartItemToMap(
+                        docRef.getId(),
+                        uid,
+                        item.getProductId(),
+                        matched.getVariantId(),
+                        item.getSize(),
+                        item.getColorName(),
+                        addQty,
+                        true,
+                        now
+                ));
+                addedCount++;
+            }
+        }
+
+        if (addedCount == 0) {
+            callback.onError(hitStockLimit
+                    ? "Sản phẩm trong đơn đã hết hàng hoặc giỏ đã đạt tối đa tồn kho"
+                    : "Sản phẩm trong đơn hiện không còn kinh doanh");
+            return;
+        }
+        final int finalAddedCount = addedCount;
+        batch.commit()
+                .addOnSuccessListener(unused -> callback.onSuccess(finalAddedCount))
+                .addOnFailureListener(e -> callback.onError("Không thể thêm lại vào giỏ hàng"));
+    }
+
     private void ensureItemVariantIds(@NonNull List<CartItemModel> items, @NonNull Runnable onReady) {
-        int pendingCount = 0;
         List<Integer> missingIndices = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             CartItemModel item = items.get(i);
@@ -176,7 +684,7 @@ public class OrderRepository {
                         if (task.isSuccessful() && task.getResult() != null) {
                             List<ProductVariantModel> loaded = new ArrayList<>();
                             for (DocumentSnapshot doc : task.getResult().getDocuments()) {
-                                loaded.add(FirestoreStoreHelper.mapVariant(doc, productId));
+                                loaded.add(ProductMapper.variantFromSnapshot(doc, productId));
                             }
                             item.getProduct().setVariants(loaded);
                             ProductVariantModel matched = item.getProduct().findVariant(item.getColorName(), item.getSize());
@@ -201,384 +709,20 @@ public class OrderRepository {
         }
     }
 
-    private void executePlaceOrderTransaction(
-            @NonNull String uid,
-            @NonNull List<CartItemModel> items,
-            @NonNull ProfileAddressModel address,
-            @NonNull String shippingMethod,
-            long shippingFee,
-            @NonNull PaymentModel.Method paymentMethod,
-            @Nullable String voucherCode,
-            long requestedDiscount,
-            boolean removeFromCart,
-            @NonNull ResourceCallback<OrderModel> callback
-    ) {
-        FirebaseFirestore db = provider.getFirestore();
-        String cleanVoucher = voucherCode != null ? voucherCode.trim().toUpperCase(Locale.ROOT) : "";
-
-        db.runTransaction(transaction -> {
-            // Giai đoạn 1: ĐỌC & KIỂM TRA TOÀN BỘ (All Reads First)
-            Map<String, DocumentReference> variantRefs = new LinkedHashMap<>();
-            Map<String, Integer> requestedQtyByKey = new LinkedHashMap<>();
-            Map<String, String> itemLabelByKey = new LinkedHashMap<>();
-
-            long subtotal = 0L;
-            List<OrderItemModel> orderItems = new ArrayList<>();
-            for (CartItemModel item : items) {
-                if (item.getVariantId().isEmpty()) {
-                    throw new FirebaseFirestoreException(
-                            "Không xác định được biến thể cho " + item.getProduct().getName() + " (EU " + item.getSize() + ")",
-                            FirebaseFirestoreException.Code.ABORTED
-                    );
-                }
-                String key = item.getProduct().getId() + "|" + item.getVariantId();
-                if (!variantRefs.containsKey(key)) {
-                    variantRefs.put(
-                            key,
-                            db.collection(FirebaseProviderHelper.COL_PRODUCTS)
-                                    .document(item.getProduct().getId())
-                                    .collection(FirebaseProviderHelper.SUB_VARIANTS)
-                                    .document(item.getVariantId())
-                    );
-                    itemLabelByKey.put(key, item.getProduct().getName() + " (EU " + item.getSize() + ")");
-                }
-                requestedQtyByKey.put(key, requestedQtyByKey.getOrDefault(key, 0) + item.getQuantity());
-                subtotal += item.getLineTotal();
-                orderItems.add(OrderItemModel.fromCartItem(item));
-            }
-
-            Map<String, Integer> currentStockByKey = new LinkedHashMap<>();
-            for (Map.Entry<String, DocumentReference> entry : variantRefs.entrySet()) {
-                DocumentSnapshot snap = transaction.get(entry.getValue());
-                if (!snap.exists()) {
-                    throw new FirebaseFirestoreException(
-                            "Sản phẩm " + itemLabelByKey.get(entry.getKey()) + " không còn tồn tại",
-                            FirebaseFirestoreException.Code.ABORTED
-                    );
-                }
-                int currentStock = FirestoreStoreHelper.readInt(snap, "stockQty", 0);
-                int needed = requestedQtyByKey.getOrDefault(entry.getKey(), 0);
-                if (currentStock < needed) {
-                    throw new FirebaseFirestoreException(
-                            itemLabelByKey.get(entry.getKey()) + " chỉ còn " + currentStock + " đôi trong kho",
-                            FirebaseFirestoreException.Code.ABORTED
-                    );
-                }
-                currentStockByKey.put(entry.getKey(), currentStock);
-            }
-
-            DocumentReference voucherRef = null;
-            long effectiveDiscount = 0L;
-            long nextVoucherUsedCount = 0L;
-            if (!cleanVoucher.isEmpty()) {
-                voucherRef = db.collection(FirebaseProviderHelper.COL_VOUCHERS).document(cleanVoucher);
-                DocumentSnapshot voucherSnap = transaction.get(voucherRef);
-                if (!voucherSnap.exists()) {
-                    throw new FirebaseFirestoreException(
-                            "Mã giảm giá " + cleanVoucher + " không tồn tại",
-                            FirebaseFirestoreException.Code.ABORTED
-                    );
-                }
-                boolean active = FirestoreStoreHelper.readBoolean(voucherSnap, "isActive", false);
-                long minOrder = FirestoreStoreHelper.readLong(voucherSnap, "minOrderAmount", 0L);
-                long voucherDiscount = FirestoreStoreHelper.readLong(voucherSnap, "discountAmount", requestedDiscount);
-                long usageLimit = FirestoreStoreHelper.readLong(voucherSnap, "usageLimit", 0L);
-                long usedCount = FirestoreStoreHelper.readLong(voucherSnap, "usedCount", 0L);
-                long expiryMillis = FirestoreStoreHelper.readMillis(voucherSnap, "expiryDate");
-
-                if (!active || (expiryMillis > 0L && System.currentTimeMillis() > expiryMillis)) {
-                    throw new FirebaseFirestoreException(
-                            "Mã giảm giá " + cleanVoucher + " đã hết hạn",
-                            FirebaseFirestoreException.Code.ABORTED
-                    );
-                }
-                if (subtotal < minOrder) {
-                    throw new FirebaseFirestoreException(
-                            "Đơn hàng chưa đạt mức tối thiểu để dùng mã " + cleanVoucher,
-                            FirebaseFirestoreException.Code.ABORTED
-                    );
-                }
-                if (usageLimit > 0L && usedCount >= usageLimit) {
-                    throw new FirebaseFirestoreException(
-                            "Mã giảm giá " + cleanVoucher + " đã hết lượt sử dụng",
-                            FirebaseFirestoreException.Code.ABORTED
-                    );
-                }
-                effectiveDiscount = Math.min(voucherDiscount, subtotal);
-                nextVoucherUsedCount = usedCount + 1L;
-            }
-
-            // Giai đoạn 2: GHI ĐỒNG BỘ TOÀN BỘ (Atomic Writes)
-            Timestamp now = Timestamp.now();
-            long nowMillis = now.toDate().getTime();
-
-            for (Map.Entry<String, DocumentReference> entry : variantRefs.entrySet()) {
-                int currentStock = currentStockByKey.getOrDefault(entry.getKey(), 0);
-                int needed = requestedQtyByKey.getOrDefault(entry.getKey(), 0);
-                transaction.update(entry.getValue(), "stockQty", Math.max(0, currentStock - needed));
-            }
-
-            if (voucherRef != null) {
-                transaction.update(voucherRef, "usedCount", nextVoucherUsedCount);
-            }
-
-            long total = Math.max(0L, subtotal + shippingFee - effectiveDiscount);
-            DocumentReference orderRef = db.collection(FirebaseProviderHelper.COL_ORDERS).document();
-            String orderId = orderRef.getId();
-            String orderCode = "RN" + new SimpleDateFormat("yyMMddHHmmss", Locale.US).format(new Date(nowMillis));
-
-            List<Map<String, Object>> itemMaps = new ArrayList<>();
-            for (OrderItemModel oi : orderItems) {
-                Map<String, Object> m = new HashMap<>();
-                m.put("productId", oi.getProductId());
-                m.put("variantId", oi.getVariantId());
-                m.put("productName", oi.getProductName());
-                m.put("thumbnailUrl", oi.getThumbnailUrl());
-                m.put("size", oi.getSize());
-                m.put("colorName", oi.getColorName());
-                m.put("unitPrice", oi.getUnitPrice());
-                m.put("quantity", oi.getQuantity());
-                m.put("lineTotal", oi.getLineTotal());
-                itemMaps.add(m);
-            }
-
-            Map<String, Object> orderData = new HashMap<>();
-            orderData.put("orderId", orderId);
-            orderData.put("orderCode", orderCode);
-            orderData.put("userId", uid);
-            orderData.put("status", OrderModel.Status.PENDING.name());
-            orderData.put("paymentMethod", paymentMethod.name());
-            orderData.put("receiverName", address.getReceiverName());
-            orderData.put("receiverPhone", address.getPhone());
-            orderData.put("shippingAddress", address.getAddressDetail());
-            orderData.put("shippingMethod", shippingMethod);
-            orderData.put("voucherCode", cleanVoucher);
-            orderData.put("items", itemMaps);
-            orderData.put("subtotal", subtotal);
-            orderData.put("shippingFee", shippingFee);
-            orderData.put("discount", effectiveDiscount);
-            orderData.put("total", total);
-            orderData.put("createdAt", now);
-            orderData.put("updatedAt", now);
-            transaction.set(orderRef, orderData);
-
-            DocumentReference paymentRef = paymentRepository.newPaymentDocumentRef(db);
-            Map<String, Object> paymentData = PaymentRepository.buildPaymentData(
-                    paymentRef.getId(), orderId, uid, paymentMethod, total, orderCode, now
-            );
-            transaction.set(paymentRef, paymentData);
-
-            if (removeFromCart) {
-                CollectionReference cartRef = db.collection(FirebaseProviderHelper.COL_USERS)
-                        .document(uid)
-                        .collection(FirebaseProviderHelper.SUB_CART);
-                for (CartItemModel item : items) {
-                    if (!item.getId().isEmpty() && !item.getId().startsWith("direct_")) {
-                        transaction.delete(cartRef.document(item.getId()));
-                    }
-                }
-            }
-
-            DocumentReference notifRef = db.collection(FirebaseProviderHelper.COL_USERS)
-                    .document(uid)
-                    .collection(FirebaseProviderHelper.SUB_NOTIFICATIONS)
-                    .document();
-            Map<String, Object> notifData = new HashMap<>();
-            notifData.put("notificationId", notifRef.getId());
-            notifData.put("userId", uid);
-            notifData.put("title", "Đặt hàng #" + orderCode + " thành công");
-            notifData.put("message", "Đơn hàng đang chờ xác nhận (" + paymentMethod.getLabel() + ").");
-            notifData.put("type", NotificationModel.Type.ORDER.name());
-            notifData.put("targetId", orderCode);
-            notifData.put("unread", true);
-            notifData.put("createdAt", now);
-            transaction.set(notifRef, notifData);
-
-            return new OrderModel(
-                    orderId,
-                    orderCode,
-                    uid,
-                    OrderModel.Status.PENDING,
-                    paymentMethod,
-                    orderItems,
-                    address.getAddressDetail(),
-                    address.getReceiverName() + " · " + address.getPhone(),
-                    shippingMethod,
-                    cleanVoucher,
-                    subtotal,
-                    shippingFee,
-                    effectiveDiscount,
-                    total,
-                    nowMillis,
-                    nowMillis
-            );
-        }).addOnSuccessListener(callback::onSuccess)
-          .addOnFailureListener(e -> callback.onError(
-                  e.getMessage() != null ? e.getMessage() : "Không thể đặt hàng, vui lòng thử lại"
-          ));
-    }
-
-    public void cancelOrder(@NonNull String orderId, @NonNull ResourceCallback<Void> callback) {
-        String uid = provider.getCurrentUid();
-        if (uid == null) {
-            callback.onError("Vui lòng đăng nhập");
-            return;
-        }
-        FirebaseFirestore db = provider.getFirestore();
-
-        // Truy vấn trước Payment Reference qua PaymentRepository bên ngoài Transaction (Firestore Transaction không hỗ trợ Query)
-        paymentRepository.findLatestPaymentRef(orderId, uid, new ResourceCallback<DocumentReference>() {
-            @Override
-            public void onSuccess(DocumentReference latestPaymentRef) {
-                runCancelOrderTransaction(db, uid, orderId, latestPaymentRef, callback);
-            }
-
-            @Override
-            public void onError(String message) {
-                runCancelOrderTransaction(db, uid, orderId, null, callback);
-            }
-        });
-    }
-
-    @SuppressWarnings("unchecked")
-    private void runCancelOrderTransaction(
+    @NonNull
+    private static DocumentReference variantDocRef(
             @NonNull FirebaseFirestore db,
-            @NonNull String uid,
-            @NonNull String orderId,
-            @Nullable DocumentReference paymentRef,
-            @NonNull ResourceCallback<Void> callback
+            @NonNull String productId,
+            @NonNull String variantId
     ) {
-        DocumentReference orderRef = db.collection(FirebaseProviderHelper.COL_ORDERS).document(orderId);
-
-        db.runTransaction(transaction -> {
-            // Giai đoạn 1: ĐỌC TOÀN BỘ
-            DocumentSnapshot orderSnap = transaction.get(orderRef);
-            if (!orderSnap.exists()) {
-                throw new FirebaseFirestoreException("Không tìm thấy đơn hàng", FirebaseFirestoreException.Code.ABORTED);
-            }
-            String statusStr = FirestoreStoreHelper.readString(orderSnap, "status", "PENDING");
-            if (!OrderModel.Status.PENDING.name().equalsIgnoreCase(statusStr)) {
-                throw new FirebaseFirestoreException("Chỉ có thể hủy đơn đang chờ xác nhận", FirebaseFirestoreException.Code.ABORTED);
-            }
-            String orderCode = FirestoreStoreHelper.readString(orderSnap, "orderCode", orderId);
-
-            Map<String, DocumentReference> variantRefs = new LinkedHashMap<>();
-            Map<String, Integer> restoreQtyByKey = new LinkedHashMap<>();
-            Object rawItems = orderSnap.get("items");
-            if (rawItems instanceof List<?>) {
-                for (Object obj : (List<?>) rawItems) {
-                    if (obj instanceof Map<?, ?>) {
-                        Map<String, Object> m = (Map<String, Object>) obj;
-                        String productId = m.get("productId") != null ? String.valueOf(m.get("productId")) : "";
-                        String variantId = m.get("variantId") != null ? String.valueOf(m.get("variantId")) : "";
-                        int qty = m.get("quantity") instanceof Number ? ((Number) m.get("quantity")).intValue() : 1;
-                        if (!productId.isEmpty() && !variantId.isEmpty()) {
-                            String key = productId + "|" + variantId;
-                            variantRefs.put(key, db.collection(FirebaseProviderHelper.COL_PRODUCTS)
-                                    .document(productId)
-                                    .collection(FirebaseProviderHelper.SUB_VARIANTS)
-                                    .document(variantId));
-                            restoreQtyByKey.put(key, restoreQtyByKey.getOrDefault(key, 0) + qty);
-                        }
-                    }
-                }
-            }
-
-            Map<String, Integer> currentStockByKey = new LinkedHashMap<>();
-            for (Map.Entry<String, DocumentReference> entry : variantRefs.entrySet()) {
-                DocumentSnapshot vSnap = transaction.get(entry.getValue());
-                if (vSnap.exists()) {
-                    currentStockByKey.put(entry.getKey(), FirestoreStoreHelper.readInt(vSnap, "stockQty", 0));
-                }
-            }
-
-            DocumentSnapshot paymentSnap = paymentRef != null ? transaction.get(paymentRef) : null;
-
-            // Giai đoạn 2: GHI ĐỒNG BỘ
-            Timestamp now = Timestamp.now();
-            transaction.update(orderRef, "status", OrderModel.Status.CANCELLED.name(), "updatedAt", now);
-
-            for (Map.Entry<String, Integer> stockEntry : currentStockByKey.entrySet()) {
-                DocumentReference vRef = variantRefs.get(stockEntry.getKey());
-                int addQty = restoreQtyByKey.getOrDefault(stockEntry.getKey(), 0);
-                if (vRef != null && addQty > 0) {
-                    transaction.update(vRef, "stockQty", stockEntry.getValue() + addQty);
-                }
-            }
-
-            if (paymentSnap != null && paymentSnap.exists()) {
-                String currentPayStatus = FirestoreStoreHelper.readString(paymentSnap, "status", "UNPAID");
-                PaymentModel.Status nextPayStatus = PaymentRepository.resolveStatusOnOrderCancel(currentPayStatus);
-                transaction.update(paymentSnap.getReference(), "status", nextPayStatus.name());
-            }
-
-            DocumentReference notifRef = db.collection(FirebaseProviderHelper.COL_USERS)
-                    .document(uid)
-                    .collection(FirebaseProviderHelper.SUB_NOTIFICATIONS)
-                    .document();
-            Map<String, Object> notifData = new HashMap<>();
-            notifData.put("notificationId", notifRef.getId());
-            notifData.put("userId", uid);
-            notifData.put("title", "Đơn #" + orderCode + " đã được hủy");
-            notifData.put("message", "Số lượng sản phẩm đã được hoàn lại vào kho của cửa hàng.");
-            notifData.put("type", NotificationModel.Type.ORDER.name());
-            notifData.put("targetId", orderCode);
-            notifData.put("unread", true);
-            notifData.put("createdAt", now);
-            transaction.set(notifRef, notifData);
-
-            return null;
-        }).addOnSuccessListener(unused -> callback.onSuccess(null))
-          .addOnFailureListener(e -> callback.onError(
-                  e.getMessage() != null ? e.getMessage() : "Không thể hủy đơn hàng"
-          ));
+        return db.collection(FirebaseProviderHelper.COL_PRODUCTS)
+                .document(productId)
+                .collection(FirebaseProviderHelper.SUB_VARIANTS)
+                .document(variantId);
     }
 
-    public void reorder(@NonNull OrderModel order, @NonNull ResourceCallback<Integer> callback) {
-        String uid = provider.getCurrentUid();
-        if (uid == null) {
-            callback.onError("Vui lòng đăng nhập");
-            return;
-        }
-        List<OrderItemModel> items = order.getOrderItems();
-        if (items.isEmpty()) {
-            callback.onError("Đơn hàng không có sản phẩm");
-            return;
-        }
-        FirebaseFirestore db = provider.getFirestore();
-        CollectionReference cartRef = db.collection(FirebaseProviderHelper.COL_USERS)
-                .document(uid)
-                .collection(FirebaseProviderHelper.SUB_CART);
-
-        WriteBatch batch = db.batch();
-        Timestamp now = Timestamp.now();
-        int count = 0;
-        for (OrderItemModel item : items) {
-            ProductModel product = store.getProductById(item.getProductId());
-            if (product == null) {
-                continue;
-            }
-            DocumentReference docRef = cartRef.document();
-            Map<String, Object> data = new HashMap<>();
-            data.put("cartItemId", docRef.getId());
-            data.put("userId", uid);
-            data.put("productId", item.getProductId());
-            data.put("variantId", item.getVariantId());
-            data.put("size", item.getSize());
-            data.put("colorName", item.getColorName());
-            data.put("quantity", Math.max(1, item.getQuantity()));
-            data.put("selected", true);
-            data.put("updatedAt", now);
-            batch.set(docRef, data);
-            count++;
-        }
-        final int addedCount = count;
-        if (addedCount == 0) {
-            callback.onError("Sản phẩm trong đơn hiện không còn kinh doanh");
-            return;
-        }
-        batch.commit()
-                .addOnSuccessListener(unused -> callback.onSuccess(addedCount))
-                .addOnFailureListener(e -> callback.onError("Không thể thêm lại vào giỏ hàng"));
+    @NonNull
+    private static FirebaseFirestoreException abort(@NonNull String message) {
+        return new FirebaseFirestoreException(message, FirebaseFirestoreException.Code.ABORTED);
     }
 }
