@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_screen"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:id="@+id/main_fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider_light" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/main_bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_screen"
+        app:itemActiveIndicatorStyle="@style/Widget.ShoesStore.BottomNav.ActiveIndicator"
+        app:itemIconSize="22dp"
+        app:itemIconTint="@color/selector_bottom_nav_icon"
+        app:itemTextAppearanceActive="@style/TextAppearance.ShoesStore.BottomNavLabel"
+        app:itemTextAppearanceInactive="@style/TextAppearance.ShoesStore.BottomNavLabel"
+        app:itemTextColor="@color/selector_bottom_nav_icon"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/main_bottom_nav_menu" />
+
+</LinearLayout>

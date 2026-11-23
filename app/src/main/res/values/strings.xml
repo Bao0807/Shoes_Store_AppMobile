@@ -1,0 +1,75 @@
+<resources>
+    <string name="app_name">Shoes Store</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_wishlist">Yêu thích</string>
+    <string name="nav_cart">Giỏ hàng</string>
+    <string name="nav_notification">Thông báo</string>
+    <string name="nav_profile">Tài khoản</string>
+
+    <!-- Categories -->
+    <string name="cat_all">Tất cả</string>
+    <string name="cat_daily">Daily</string>
+    <string name="cat_race">Race</string>
+    <string name="cat_tempo">Tempo</string>
+    <string name="cat_trail">Trail</string>
+    <string name="cat_recovery">Recovery</string>
+
+    <!-- Home & Search -->
+    <string name="home_search_hint">Tìm giày chạy bộ, Nike, ASICS...</string>
+    <string name="home_section_suggest">Gợi ý cho runner</string>
+    <string name="home_clear_filter">Xóa lọc</string>
+    <string name="home_empty_filter">Không có mẫu giày nào khớp bộ lọc</string>
+    <string name="search_recent">Tìm kiếm gần đây</string>
+    <string name="search_popular">Từ khóa phổ biến</string>
+    <string name="search_empty_title">Không tìm thấy giày phù hợp</string>
+    <string name="search_empty_desc">Thử từ khóa khác hoặc bỏ bớt bộ lọc nhé</string>
+    <string name="filter_title">Bộ lọc giày chạy bộ</string>
+    <string name="filter_reset">Đặt lại</string>
+    <string name="filter_apply">Áp dụng</string>
+
+    <!-- Product Detail -->
+    <string name="product_specs_title">Thông số chạy bộ</string>
+    <string name="product_color_title">Phối màu</string>
+    <string name="product_size_title">Chọn size (EU)</string>
+    <string name="product_size_guide">Bảng quy đổi size</string>
+    <string name="product_desc_title">Mô tả chi tiết</string>
+    <string name="product_reviews_title">Đánh giá từ runner</string>
+    <string name="product_add_to_cart">Thêm vào giỏ</string>
+    <string name="product_buy_now">Mua ngay</string>
+
+    <!-- Wishlist -->
+    <string name="wishlist_title">Yêu thích</string>
+    <string name="wishlist_empty_title">Bạn chưa lưu đôi giày nào</string>
+    <string name="wishlist_empty_desc">Thả tim các mẫu giày chạy bộ bạn quan tâm để xem lại nhanh</string>
+    <string name="wishlist_explore">Khám phá ngay</string>
+
+    <!-- Cart -->
+    <string name="cart_title">Giỏ hàng</string>
+    <string name="cart_select_all">Chọn tất cả</string>
+    <string name="cart_checkout">Mua hàng</string>
+    <string name="cart_empty_title">Giỏ hàng đang trống</string>
+    <string name="cart_empty_desc">Chọn cho mình một đôi giày chạy bộ ưng ý ngay nhé</string>
+    <string name="cart_pick_shoes">Đi chọn giày</string>
+
+    <!-- Notification -->
+    <string name="notif_title">Thông báo</string>
+    <string name="notif_mark_all">Đọc tất cả</string>
+    <string name="notif_empty">Chưa có thông báo nào</string>
+
+    <!-- Order & Checkout -->
+    <string name="checkout_title">Thanh toán</string>
+    <string name="checkout_place_order">Đặt hàng</string>
+    <string name="order_history_title">Đơn hàng của tôi</string>
+    <string name="order_detail_title">Chi tiết đơn hàng</string>
+    <string name="order_success_title">Đặt hàng thành công!</string>
+    <string name="order_success_view">Xem đơn hàng</string>
+    <string name="order_success_home">Về trang chủ</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Tài khoản</string>
+    <string name="profile_edit_title">Chỉnh sửa hồ sơ chạy bộ</string>
+    <string name="profile_address_title">Sổ địa chỉ giao hàng</string>
+    <string name="profile_save">Lưu thay đổi</string>
+</resources>
