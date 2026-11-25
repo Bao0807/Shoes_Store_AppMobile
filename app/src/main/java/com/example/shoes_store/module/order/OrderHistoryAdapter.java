@@ -1,28 +1,25 @@
 package com.example.shoes_store.module.order;
 
-import android.content.Context;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseListAdapter;
 import com.example.shoes_store.core.CurrencyFormatUtil;
-import com.example.shoes_store.module.cart.CartItemModel;
+import com.example.shoes_store.core.RemoteImageHelper;
 import com.google.android.material.button.MaterialButton;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Adapter danh sách đơn hàng theo trạng thái.
  */
-public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapter.OrderViewHolder> {
+public class OrderHistoryAdapter extends BaseListAdapter<OrderModel, OrderHistoryAdapter.OrderViewHolder> {
 
     public interface OnOrderActionListener {
         void onOrderClick(OrderModel order);
@@ -30,48 +27,37 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
         void onOrderActionClick(OrderModel order);
     }
 
-    private final List<OrderModel> orders = new ArrayList<>();
     private final OnOrderActionListener listener;
 
     public OrderHistoryAdapter(OnOrderActionListener listener) {
         this.listener = listener;
     }
 
-    public void submitList(List<OrderModel> list) {
-        orders.clear();
-        if (list != null) {
-            orders.addAll(list);
-        }
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public OrderViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.order_item_history, parent, false);
-        return new OrderViewHolder(view);
+        return new OrderViewHolder(inflate(parent, R.layout.order_item_history));
     }
 
     @Override
     public void onBindViewHolder(@NonNull OrderViewHolder holder, int position) {
-        OrderModel order = orders.get(position);
-        Context context = holder.itemView.getContext();
+        OrderModel order = getItem(position);
 
         holder.codeText.setText("Mã đơn #" + order.getOrderCode());
         holder.dateText.setText(order.getCreatedAt());
         holder.itemCountText.setText(order.getTotalQuantity() + " sản phẩm");
         holder.totalText.setText(CurrencyFormatUtil.formatVnd(order.getTotal()));
 
-        if (!order.getItems().isEmpty()) {
-            CartItemModel first = order.getItems().get(0);
-            holder.shoeImage.setImageResource(first.getProduct().getImageResId());
-            holder.shoeName.setText(first.getProduct().getBrand() + " " + first.getProduct().getName());
-            String extra = order.getItems().size() > 1 ? " (+" + (order.getItems().size() - 1) + " mẫu khác)" : "";
+        List<OrderItemModel> orderItems = order.getOrderItems();
+        if (!orderItems.isEmpty()) {
+            OrderItemModel first = orderItems.get(0);
+            RemoteImageHelper.bindImage(holder.shoeImage, first.getThumbnailUrl(), first.getFallbackImageResId());
+            holder.shoeName.setText(first.getProductName());
+            String extra = orderItems.size() > 1 ? " (+" + (orderItems.size() - 1) + " mẫu khác)" : "";
             holder.shoeMeta.setText("EU " + first.getSize() + " · " + first.getColorName() + " · x" + first.getQuantity() + extra);
         }
 
-        applyStatusStyle(holder.statusBadge, order.getStatus(), context);
+        OrderStatusHelper.applyStatusBadge(holder.statusBadge, order.getStatus());
 
         if (order.getStatus() == OrderModel.Status.PENDING) {
             holder.actionBtn.setVisibility(View.VISIBLE);
@@ -93,40 +79,6 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
                 listener.onOrderActionClick(order);
             }
         });
-    }
-
-    public static void applyStatusStyle(TextView badge, OrderModel.Status status, Context context) {
-        badge.setText(status.getLabel());
-        int bgRes;
-        int textRes;
-        switch (status) {
-            case PENDING:
-                bgRes = R.color.status_warning_soft;
-                textRes = R.color.status_warning;
-                break;
-            case SHIPPING:
-                bgRes = R.color.status_info_soft;
-                textRes = R.color.status_info;
-                break;
-            case COMPLETED:
-                bgRes = R.color.status_success_soft;
-                textRes = R.color.status_success;
-                break;
-            case CANCELLED:
-            default:
-                bgRes = R.color.status_danger_soft;
-                textRes = R.color.status_danger;
-                break;
-        }
-        badge.setTextColor(ContextCompat.getColor(context, textRes));
-        if (badge.getBackground() != null) {
-            badge.getBackground().mutate().setTint(ContextCompat.getColor(context, bgRes));
-        }
-    }
-
-    @Override
-    public int getItemCount() {
-        return orders.size();
     }
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {

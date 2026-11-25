@@ -1,8 +1,11 @@
 package com.example.shoes_store.module.notification;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
+
+import com.example.shoes_store.core.ResourceCallback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +21,7 @@ public class NotificationViewModel extends ViewModel {
         PROMO
     }
 
-    private final NotificationRepository repository = new NotificationRepository();
+    private final NotificationRepository repository = NotificationRepository.getInstance();
     private Filter activeFilter = Filter.ALL;
 
     public LiveData<List<NotificationModel>> getNotificationsLiveData() {
@@ -46,11 +49,11 @@ public class NotificationViewModel extends ViewModel {
         return result;
     }
 
-    public void markRead(@NonNull String id) {
-        repository.markRead(id);
+    public void markRead(@NonNull String id, @Nullable ResourceCallback<Void> callback) {
+        repository.markRead(id, callback);
     }
 
-    public void markAllRead() {
-        repository.markAllRead();
+    public void markAllRead(@Nullable ResourceCallback<Void> callback) {
+        repository.markAllRead(callback);
     }
 }

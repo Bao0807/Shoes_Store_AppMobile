@@ -1,11 +1,16 @@
 package com.example.shoes_store.module.order;
 
-import com.example.shoes_store.module.cart.CartItemModel;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import com.example.shoes_store.core.DateFormatUtil;
+import com.example.shoes_store.module.payment.PaymentModel;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Model đơn hàng với trạng thái và chi tiết thanh toán.
+ * Model đơn hàng với trạng thái, phương thức thanh toán và snapshot chi tiết thanh toán.
  */
 public class OrderModel {
 
@@ -24,51 +29,87 @@ public class OrderModel {
         public String getLabel() {
             return label;
         }
+
+        @NonNull
+        public static Status fromStorage(@Nullable String value) {
+            if (value == null) {
+                return PENDING;
+            }
+            for (Status s : values()) {
+                if (s.name().equalsIgnoreCase(value)) {
+                    return s;
+                }
+            }
+            return PENDING;
+        }
     }
 
+    private final String orderId;
     private final String orderCode;
+    private final String userId;
     private final String createdAt;
-    private Status status;
-    private final List<CartItemModel> items;
+    private final Status status;
+    private final List<OrderItemModel> orderItems;
     private final String addressSummary;
     private final String receiverInfo;
     private final String shippingMethod;
     private final String paymentMethod;
+    private final String voucherCode;
     private final long subtotal;
     private final long shippingFee;
     private final long discount;
     private final long total;
+    private final long createdAtMillis;
 
     public OrderModel(
-            String orderCode,
-            String createdAt,
-            Status status,
-            List<CartItemModel> items,
-            String addressSummary,
-            String receiverInfo,
-            String shippingMethod,
-            String paymentMethod,
+            @NonNull String orderId,
+            @NonNull String orderCode,
+            @NonNull String userId,
+            @NonNull Status status,
+            @NonNull PaymentModel.Method paymentMethodEnum,
+            @NonNull List<OrderItemModel> orderItems,
+            @NonNull String addressSummary,
+            @NonNull String receiverInfo,
+            @NonNull String shippingMethod,
+            @Nullable String voucherCode,
             long subtotal,
             long shippingFee,
             long discount,
-            long total
+            long total,
+            long createdAtMillis
     ) {
+        this.orderId = orderId;
         this.orderCode = orderCode;
-        this.createdAt = createdAt;
+        this.userId = userId;
         this.status = status;
-        this.items = items;
+        this.paymentMethod = paymentMethodEnum.getLabel();
+        this.orderItems = orderItems != null ? new ArrayList<>(orderItems) : new ArrayList<>();
         this.addressSummary = addressSummary;
         this.receiverInfo = receiverInfo;
         this.shippingMethod = shippingMethod;
-        this.paymentMethod = paymentMethod;
+        this.voucherCode = voucherCode != null ? voucherCode : "";
         this.subtotal = subtotal;
         this.shippingFee = shippingFee;
         this.discount = discount;
         this.total = total;
+        this.createdAtMillis = createdAtMillis;
+        this.createdAt = createdAtMillis > 0L
+                ? DateFormatUtil.formatDateTime(createdAtMillis)
+                : "";
+    }
+
+    @NonNull
+    public String getOrderId() {
+        return orderId;
     }
 
     public String getOrderCode() {
         return orderCode;
+    }
+
+    @NonNull
+    public String getUserId() {
+        return userId;
     }
 
     public String getCreatedAt() {
@@ -79,12 +120,9 @@ public class OrderModel {
         return status;
     }
 
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public List<CartItemModel> getItems() {
-        return items;
+    @NonNull
+    public List<OrderItemModel> getOrderItems() {
+        return orderItems;
     }
 
     public String getAddressSummary() {
@@ -103,6 +141,11 @@ public class OrderModel {
         return paymentMethod;
     }
 
+    @NonNull
+    public String getVoucherCode() {
+        return voucherCode;
+    }
+
     public long getSubtotal() {
         return subtotal;
     }
@@ -119,9 +162,17 @@ public class OrderModel {
         return total;
     }
 
+    public long getCreatedAtMillis() {
+        return createdAtMillis;
+    }
+
+    public boolean canCancel() {
+        return status == Status.PENDING;
+    }
+
     public int getTotalQuantity() {
         int count = 0;
-        for (CartItemModel item : items) {
+        for (OrderItemModel item : orderItems) {
             count += item.getQuantity();
         }
         return count;

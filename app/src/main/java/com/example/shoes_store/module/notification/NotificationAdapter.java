@@ -1,7 +1,6 @@
 package com.example.shoes_store.module.notification;
 
 import android.content.Context;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -12,45 +11,33 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.example.shoes_store.core.BaseListAdapter;
+import com.example.shoes_store.core.StatusBadgeHelper;
 
 /**
  * Adapter hiển thị danh sách thông báo đơn hàng, ưu đãi và sản phẩm mới.
  */
-public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapter.NotifViewHolder> {
+public class NotificationAdapter extends BaseListAdapter<NotificationModel, NotificationAdapter.NotifViewHolder> {
 
     public interface OnNotificationClickListener {
         void onNotificationClick(NotificationModel item);
     }
 
-    private final List<NotificationModel> items = new ArrayList<>();
     private final OnNotificationClickListener listener;
 
     public NotificationAdapter(OnNotificationClickListener listener) {
         this.listener = listener;
     }
 
-    public void submitList(List<NotificationModel> list) {
-        items.clear();
-        if (list != null) {
-            items.addAll(list);
-        }
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public NotifViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.notification_item_row, parent, false);
-        return new NotifViewHolder(view);
+        return new NotifViewHolder(inflate(parent, R.layout.notification_item_row));
     }
 
     @Override
     public void onBindViewHolder(@NonNull NotifViewHolder holder, int position) {
-        NotificationModel item = items.get(position);
+        NotificationModel item = getItem(position);
         Context context = holder.itemView.getContext();
 
         holder.titleText.setText(item.getTitle());
@@ -59,10 +46,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         holder.unreadDot.setVisibility(item.isUnread() ? View.VISIBLE : View.GONE);
 
         int bgRes = item.isUnread() ? R.color.brand_accent_soft : R.color.bg_screen;
-        holder.rootView.getBackground().mutate().setTint(ContextCompat.getColor(
-                context,
-                item.isUnread() ? R.color.brand_accent_soft : R.color.bg_screen
-        ));
+        StatusBadgeHelper.applyBackgroundTint(holder.rootView, bgRes);
 
         int iconRes;
         int iconTint;
@@ -82,18 +66,13 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         }
         holder.iconView.setImageResource(iconRes);
         holder.iconView.setColorFilter(ContextCompat.getColor(context, iconTint));
-        holder.iconBg.getBackground().mutate().setTint(ContextCompat.getColor(context, badgeTint));
+        StatusBadgeHelper.applyBackgroundTint(holder.iconBg, badgeTint);
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onNotificationClick(item);
             }
         });
-    }
-
-    @Override
-    public int getItemCount() {
-        return items.size();
     }
 
     static class NotifViewHolder extends RecyclerView.ViewHolder {

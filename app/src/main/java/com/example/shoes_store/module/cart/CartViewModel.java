@@ -5,6 +5,11 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.module.voucher.VoucherModel;
+import com.example.shoes_store.module.voucher.VoucherRepository;
+import com.example.shoes_store.module.voucher.VoucherService;
+
 import java.util.List;
 
 /**
@@ -12,51 +17,85 @@ import java.util.List;
  */
 public class CartViewModel extends ViewModel {
 
-    private final CartRepository repository = new CartRepository();
+    private final CartRepository repository = CartRepository.getInstance();
+    private final VoucherRepository voucherRepository = VoucherRepository.getInstance();
     @Nullable
-    private CartVoucherModel selectedVoucher;
+    private VoucherModel selectedVoucher;
 
     public LiveData<List<CartItemModel>> getCartItemsLiveData() {
         return repository.getCartItemsLiveData();
     }
 
-    public List<CartVoucherModel> getAvailableVouchers() {
-        return repository.getVouchers();
+    public LiveData<List<VoucherModel>> getVouchersLiveData() {
+        return voucherRepository.getVouchersLiveData();
+    }
+
+    public List<VoucherModel> getAvailableVouchers() {
+        return voucherRepository.getVouchers();
     }
 
     @Nullable
-    public CartVoucherModel getSelectedVoucher() {
+    public VoucherModel getSelectedVoucher() {
         return selectedVoucher;
     }
 
-    public void setSelectedVoucher(@Nullable CartVoucherModel voucher) {
+    public void setSelectedVoucher(@Nullable VoucherModel voucher) {
         this.selectedVoucher = voucher;
     }
 
-    public long calculateEffectiveDiscount(long subtotal) {
+    public void syncSelectedVoucherWithLatest(@Nullable List<VoucherModel> latestVouchers) {
         if (selectedVoucher == null) {
-            return 0L;
+            return;
         }
-        if (!selectedVoucher.isEligible(subtotal)) {
+        if (latestVouchers == null || latestVouchers.isEmpty()) {
             selectedVoucher = null;
-            return 0L;
+            return;
         }
-        return Math.min(selectedVoucher.getDiscountAmount(), subtotal);
+        String code = selectedVoucher.getCode();
+        for (VoucherModel latest : latestVouchers) {
+            if (code.equalsIgnoreCase(latest.getCode())) {
+                selectedVoucher = (latest.isActive() && latest.isNotExpired() && latest.hasRemainingQuota())
+                        ? latest
+                        : null;
+                return;
+            }
+        }
+        selectedVoucher = null;
     }
 
-    public void updateQuantity(@NonNull String cartItemId, int delta) {
-        repository.updateQuantity(cartItemId, delta);
+    public long calculateEffectiveDiscount(long subtotal) {
+        long discount = VoucherService.resolveDiscountAmount(selectedVoucher, subtotal);
+        if (selectedVoucher != null && !selectedVoucher.isEligible(subtotal)) {
+            selectedVoucher = null;
+        }
+        return discount;
     }
 
-    public void toggleItemSelected(@NonNull String cartItemId, boolean selected) {
-        repository.toggleItemSelected(cartItemId, selected);
+    public void updateQuantity(
+            @NonNull CartItemModel item,
+            int delta,
+            @Nullable ResourceCallback<Void> callback
+    ) {
+        repository.updateQuantity(item, delta, callback);
     }
 
-    public void selectAll(boolean selected) {
-        repository.selectAll(selected);
+    public void toggleItemSelected(
+            @NonNull String cartItemId,
+            boolean selected,
+            @Nullable ResourceCallback<Void> callback
+    ) {
+        repository.toggleItemSelected(cartItemId, selected, callback);
     }
 
-    public void removeItem(@NonNull String cartItemId) {
-        repository.removeItem(cartItemId);
+    public void selectAll(
+            @Nullable List<CartItemModel> items,
+            boolean selected,
+            @Nullable ResourceCallback<Void> callback
+    ) {
+        repository.selectAll(items, selected, callback);
+    }
+
+    public void removeItem(@NonNull String cartItemId, @Nullable ResourceCallback<Void> callback) {
+        repository.removeItem(cartItemId, callback);
     }
 }

@@ -1,37 +1,45 @@
 package com.example.shoes_store.module.cart;
 
+import androidx.annotation.NonNull;
+
 import com.example.shoes_store.module.product.ProductModel;
 
 /**
- * Một dòng sản phẩm trong giỏ hàng hoặc đơn hàng.
+ * Một dòng sản phẩm trong giỏ hàng (gắn với Product và ProductVariant).
  */
 public class CartItemModel {
 
     private final String id;
     private final ProductModel product;
+    private final String variantId;
     private final String size;
     private final String colorName;
-    private int quantity;
-    private boolean selected;
+    private final int quantity;
+    private final boolean selected;
+    private final long updatedAtMillis;
 
     public CartItemModel(
             String id,
             ProductModel product,
+            String variantId,
             String size,
             String colorName,
             int quantity,
-            boolean selected
+            boolean selected,
+            long updatedAtMillis
     ) {
-        this.id = id;
+        this.id = id != null ? id : "";
         this.product = product;
-        this.size = size;
-        this.colorName = colorName;
-        this.quantity = quantity;
+        this.variantId = variantId != null ? variantId : "";
+        this.size = size != null ? size : "42";
+        this.colorName = colorName != null ? colorName : "Mặc định";
+        this.quantity = Math.max(1, quantity);
         this.selected = selected;
+        this.updatedAtMillis = updatedAtMillis;
     }
 
     public CartItemModel copy() {
-        return new CartItemModel(id, product, size, colorName, quantity, selected);
+        return new CartItemModel(id, product, variantId, size, colorName, quantity, selected, updatedAtMillis);
     }
 
     public String getId() {
@@ -40,6 +48,11 @@ public class CartItemModel {
 
     public ProductModel getProduct() {
         return product;
+    }
+
+    @NonNull
+    public String getVariantId() {
+        return variantId;
     }
 
     public String getSize() {
@@ -54,16 +67,12 @@ public class CartItemModel {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
     public boolean isSelected() {
         return selected;
     }
 
-    public void setSelected(boolean selected) {
-        this.selected = selected;
+    public long getUpdatedAtMillis() {
+        return updatedAtMillis;
     }
 
     public long getLineTotal() {
