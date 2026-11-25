@@ -9,17 +9,14 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
-import com.example.shoes_store.core.FirebaseProviderHelper;
-import com.example.shoes_store.core.UiInsetHelper;
+import com.example.shoes_store.core.BaseActivity;
+import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.module.auth.AuthLoginActivity;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.example.shoes_store.module.product.ProductModel;
@@ -31,9 +28,11 @@ import java.util.List;
 /**
  * Màn hình Tìm kiếm & Sắp xếp / Lọc nâng cao giày chạy bộ.
  */
-public class HomeSearchActivity extends AppCompatActivity {
+public class HomeSearchActivity extends BaseActivity {
 
-    private static final String[] POPULAR_KEYWORDS = {"Alphafly 3", "Daily", "HOKA", "Trail", "Carbon", "ASICS"};
+    private static final String[] POPULAR_KEYWORDS = {
+            "Alphafly 3", CategoryStyleHelper.CAT_DAILY, "HOKA", CategoryStyleHelper.CAT_TRAIL, "Carbon", "ASICS"
+    };
 
     private HomeViewModel viewModel;
     private HomeShoeAdapter shoeAdapter;
@@ -52,9 +51,7 @@ public class HomeSearchActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        WindowCompat.enableEdgeToEdge(getWindow());
-        setContentView(R.layout.home_search_activity);
-        UiInsetHelper.applySystemBarInsets(findViewById(R.id.search_root));
+        setEdgeToEdgeContent(R.layout.home_search_activity, R.id.search_root);
 
         viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
@@ -70,7 +67,7 @@ public class HomeSearchActivity extends AppCompatActivity {
         resultRecycler = findViewById(R.id.search_result_recycler);
         emptyStateView = findViewById(R.id.search_empty_state);
 
-        findViewById(R.id.search_back_btn).setOnClickListener(v -> finish());
+        bindBackButton(R.id.search_back_btn);
         findViewById(R.id.search_filter_btn).setOnClickListener(v -> openFilterSheet());
         clearBtn.setOnClickListener(v -> searchInput.setText(""));
 
@@ -158,17 +155,13 @@ public class HomeSearchActivity extends AppCompatActivity {
 
             @Override
             public void onFavoriteToggle(ProductModel product) {
-                if (!FirebaseProviderHelper.getInstance().isSignedIn()) {
-                    Toast.makeText(HomeSearchActivity.this, R.string.auth_login_required, Toast.LENGTH_SHORT).show();
+                if (!viewModel.isSignedIn()) {
+                    showToast(R.string.auth_login_required);
                     AuthLoginActivity.open(HomeSearchActivity.this);
                     return;
                 }
                 boolean added = viewModel.toggleFavorite(product.getId());
-                Toast.makeText(
-                        HomeSearchActivity.this,
-                        added ? "Đã thêm vào Yêu thích" : "Đã bỏ khỏi Yêu thích",
-                        Toast.LENGTH_SHORT
-                ).show();
+                showToast(added ? "Đã thêm vào Yêu thích" : "Đã bỏ khỏi Yêu thích");
             }
         });
         resultRecycler.setLayoutManager(new GridLayoutManager(this, 2));
@@ -191,7 +184,7 @@ public class HomeSearchActivity extends AppCompatActivity {
         });
 
         viewModel.getDisplayedProductsLiveData().observe(this, products -> {
-            shoeAdapter.submitProducts(products);
+            shoeAdapter.submitList(products);
             int count = products != null ? products.size() : 0;
             resultCountText.setText("Tìm thấy " + count + " đôi giày");
             emptyStateView.setVisibility(count == 0 ? View.VISIBLE : View.GONE);

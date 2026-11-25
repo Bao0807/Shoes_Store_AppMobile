@@ -30,12 +30,9 @@
     <string name="filter_apply">Áp dụng</string>
 
     <!-- Product Detail -->
-    <string name="product_specs_title">Thông số chạy bộ</string>
     <string name="product_color_title">Phối màu</string>
     <string name="product_size_title">Chọn size (EU)</string>
     <string name="product_size_guide">Bảng quy đổi size</string>
-    <string name="product_desc_title">Mô tả chi tiết</string>
-    <string name="product_reviews_title">Đánh giá từ runner</string>
     <string name="product_tab_desc">Mô tả</string>
     <string name="product_tab_specs">Thông số chi tiết</string>
     <string name="product_tab_return">Quy định đổi trả</string>
@@ -77,7 +74,6 @@
     <string name="order_success_home">Về trang chủ</string>
 
     <!-- Profile -->
-    <string name="profile_title">Tài khoản</string>
     <string name="profile_edit_title">Chỉnh sửa hồ sơ chạy bộ</string>
     <string name="profile_address_title">Sổ địa chỉ giao hàng</string>
     <string name="profile_save">Lưu thay đổi</string>
@@ -91,12 +87,18 @@
 
     <!-- Auth -->
     <string name="auth_login_title">Đăng nhập</string>
-    <string name="auth_login_subtitle">Đăng nhập để đồng bộ giỏ hàng, yêu thích và theo dõi đơn giày chạy bộ</string>
     <string name="auth_register_title">Đăng ký tài khoản</string>
-    <string name="auth_register_subtitle">Tạo hồ sơ runner để nhận ưu đãi và theo dõi đơn hàng dễ dàng</string>
     <string name="auth_forgot_password">Quên mật khẩu?</string>
     <string name="auth_login_btn">Đăng nhập</string>
     <string name="auth_register_btn">Tạo tài khoản</string>
     <string name="auth_logout">Đăng xuất</string>
     <string name="auth_login_required">Vui lòng đăng nhập để tiếp tục</string>
+
+    <!-- Voucher -->
+    <string name="voucher_applied_title">Mã %1$s</string>
+    <string name="voucher_applied_subtitle">Đã giảm %1$s</string>
+    <string name="voucher_action_change">Đổi mã</string>
+    <string name="voucher_default_title">Voucher của cửa hàng</string>
+    <string name="voucher_default_subtitle">Bấm để chọn hoặc nhập mã giảm giá</string>
+    <string name="voucher_action_pick">Chọn mã</string>
 </resources>

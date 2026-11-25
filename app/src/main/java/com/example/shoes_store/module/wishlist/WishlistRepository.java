@@ -7,6 +7,8 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.shoes_store.core.BaseFirestoreRepository;
+import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.core.FirestoreReadUtil;
 import com.example.shoes_store.core.ResourceCallback;
@@ -19,30 +21,25 @@ import com.example.shoes_store.module.product.ProductVariantModel;
 import com.example.shoes_store.module.profile.ProfileModel;
 import com.example.shoes_store.module.profile.ProfileRepository;
 import com.google.firebase.Timestamp;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
  * Repository sở hữu danh sách Yêu thích (`users/{uid}/wishlist`) và thao tác thêm nhanh vào giỏ.
  */
-public class WishlistRepository {
+public class WishlistRepository extends BaseFirestoreRepository {
 
     private static final String TAG = "WishlistRepository";
+    private static final String LISTENER_WISHLIST = "wishlist";
     private static volatile WishlistRepository instance;
 
-    private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
     private final MutableLiveData<Set<String>> favoriteIdsLiveData = new MutableLiveData<>(new LinkedHashSet<>());
-    @Nullable
-    private ListenerRegistration wishlistRegistration;
 
     private WishlistRepository() {
     }
@@ -58,42 +55,43 @@ public class WishlistRepository {
         return instance;
     }
 
+    @Override
+    public void onSessionStart(@NonNull String uid, @NonNull FirebaseUser authUser) {
+        startUserListening(uid);
+    }
+
+    @Override
+    public void onSessionEnd() {
+        stopUserListening();
+    }
+
     // ===== 1. REALTIME =====
 
     public void startUserListening(@NonNull String uid) {
         stopUserListening();
-        wishlistRegistration = provider.getFirestore()
-                .collection(FirebaseProviderHelper.COL_USERS)
-                .document(uid)
-                .collection(FirebaseProviderHelper.SUB_WISHLIST)
-                .addSnapshotListener((snap, error) -> {
-                    if (error != null) {
-                        Log.w(TAG, "Wishlist listener error: " + error.getMessage());
-                    }
-                    if (snap == null) {
-                        return;
-                    }
-                    List<DocumentSnapshot> docs = new ArrayList<>(snap.getDocuments());
-                    Collections.sort(docs, (a, b) -> Long.compare(
-                            FirestoreReadUtil.readMillis(b, "addedAt"),
-                            FirestoreReadUtil.readMillis(a, "addedAt")
-                    ));
+        replaceUserListener(LISTENER_WISHLIST, listenCollection(
+                userSubCollection(uid, FirebaseProviderHelper.SUB_WISHLIST),
+                TAG,
+                doc -> doc,
+                (a, b) -> Long.compare(
+                        FirestoreReadUtil.readMillis(b, WishlistMapper.FIELD_ADDED_AT),
+                        FirestoreReadUtil.readMillis(a, WishlistMapper.FIELD_ADDED_AT)
+                ),
+                docs -> {
                     Set<String> ids = new LinkedHashSet<>();
                     for (DocumentSnapshot doc : docs) {
-                        String pid = FirestoreReadUtil.readString(doc, "productId", doc.getId());
+                        String pid = FirestoreReadUtil.readString(doc, WishlistMapper.FIELD_PRODUCT_ID, doc.getId());
                         if (!pid.isEmpty()) {
                             ids.add(pid);
                         }
                     }
                     favoriteIdsLiveData.setValue(ids);
-                });
+                }
+        ));
     }
 
     public void stopUserListening() {
-        if (wishlistRegistration != null) {
-            wishlistRegistration.remove();
-            wishlistRegistration = null;
-        }
+        clearUserListeners();
         favoriteIdsLiveData.setValue(new LinkedHashSet<>());
     }
 
@@ -101,10 +99,6 @@ public class WishlistRepository {
 
     public LiveData<Set<String>> getFavoriteIdsLiveData() {
         return favoriteIdsLiveData;
-    }
-
-    public LiveData<List<ProductModel>> getProductsLiveData() {
-        return ProductRepository.getInstance().getProductsLiveData();
     }
 
     public boolean isFavorite(@Nullable String productId) {
@@ -122,7 +116,7 @@ public class WishlistRepository {
             if (!favoriteIds.contains(p.getId())) {
                 continue;
             }
-            if (!"Tất cả".equals(category) && !p.getCategory().equalsIgnoreCase(category)) {
+            if (!CategoryStyleHelper.CAT_ALL.equals(category) && !p.getCategory().equalsIgnoreCase(category)) {
                 continue;
             }
             result.add(p);
@@ -137,21 +131,14 @@ public class WishlistRepository {
         if (uid == null) {
             return false;
         }
-        CollectionReference ref = provider.getFirestore()
-                .collection(FirebaseProviderHelper.COL_USERS)
-                .document(uid)
-                .collection(FirebaseProviderHelper.SUB_WISHLIST);
+        CollectionReference ref = userSubCollection(uid, FirebaseProviderHelper.SUB_WISHLIST);
         boolean currentlyFav = isFavorite(productId);
         if (currentlyFav) {
             ref.document(productId).delete()
                     .addOnFailureListener(e -> Log.w(TAG, "Remove favorite failed: " + e.getMessage()));
             return false;
         } else {
-            Map<String, Object> data = new HashMap<>();
-            data.put("productId", productId);
-            data.put("userId", uid);
-            data.put("addedAt", Timestamp.now());
-            ref.document(productId).set(data)
+            ref.document(productId).set(WishlistMapper.toMap(productId, uid, Timestamp.now()))
                     .addOnFailureListener(e -> Log.w(TAG, "Add favorite failed: " + e.getMessage()));
             return true;
         }
@@ -167,8 +154,7 @@ public class WishlistRepository {
         ProfileModel profile = ProfileRepository.getInstance().getProfile();
         String preferred = profile != null ? profile.getPreferredSize() : "42";
 
-        provider.getFirestore()
-                .collection(FirebaseProviderHelper.COL_PRODUCTS)
+        collection(FirebaseProviderHelper.COL_PRODUCTS)
                 .document(product.getId())
                 .collection(FirebaseProviderHelper.SUB_VARIANTS)
                 .get()

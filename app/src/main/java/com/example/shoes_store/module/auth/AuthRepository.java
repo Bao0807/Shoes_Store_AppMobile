@@ -9,19 +9,17 @@ import com.example.shoes_store.core.AppPrefsHelper;
 import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.core.FirestoreReadUtil;
 import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.core.UserRoleHelper;
 import com.example.shoes_store.module.admin.AdminService;
 import com.example.shoes_store.module.notification.NotificationMapper;
 import com.example.shoes_store.module.notification.NotificationModel;
 import com.example.shoes_store.module.profile.ProfileMapper;
-import com.google.android.gms.tasks.Task;
-import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.WriteBatch;
@@ -66,14 +64,14 @@ public class AuthRepository {
                 .addOnSuccessListener(authResult -> {
                     AppPrefsHelper.saveLastLoginEmail(cleanEmail);
                     FirebaseUser user = authResult.getUser();
-                    if (user != null && AdminService.isDefaultAdminEmail(cleanEmail)) {
+                    if (user != null && UserRoleHelper.isDefaultAdminEmail(cleanEmail)) {
                         ensureAdminUserDocument(user, cleanEmail, callback);
                     } else {
                         callback.onSuccess(user);
                     }
                 })
                 .addOnFailureListener(e -> {
-                    if (AdminService.isDefaultAdminEmail(cleanEmail)
+                    if (UserRoleHelper.isDefaultAdminEmail(cleanEmail)
                             && AdminService.DEFAULT_ADMIN_PASS.equals(password)) {
                         autoCreateDefaultAdminAccount(cleanEmail, password, e, callback);
                     } else {
@@ -132,7 +130,7 @@ public class AuthRepository {
             callback.onSuccess(false);
             return;
         }
-        if (AdminService.isDefaultAdminEmail(user.getEmail())) {
+        if (UserRoleHelper.isDefaultAdminEmail(user.getEmail())) {
             callback.onSuccess(true);
             return;
         }
@@ -144,7 +142,9 @@ public class AuthRepository {
                     boolean isAdmin = false;
                     if (task.isSuccessful() && task.getResult() != null && task.getResult().exists()) {
                         String role = FirestoreReadUtil.readString(task.getResult(), ProfileMapper.FIELD_ROLE, "");
-                        isAdmin = AdminService.isAdminRole(role);
+                        isAdmin = UserRoleHelper.isAdminRole(role);
+                    } else if (!task.isSuccessful()) {
+                        Log.w(TAG, "Resolve admin role failed: " + (task.getException() != null ? task.getException().getMessage() : "unknown"));
                     }
                     callback.onSuccess(isAdmin);
                 });
@@ -183,7 +183,7 @@ public class AuthRepository {
         adminData.put(ProfileMapper.FIELD_UID, uid);
         adminData.put(ProfileMapper.FIELD_FULL_NAME, "Quản trị viên (Admin)");
         adminData.put(ProfileMapper.FIELD_EMAIL, email);
-        adminData.put(ProfileMapper.FIELD_ROLE, AdminService.ROLE_ADMIN);
+        adminData.put(ProfileMapper.FIELD_ROLE, UserRoleHelper.ROLE_ADMIN);
         adminData.put(ProfileMapper.FIELD_UPDATED_AT, now);
 
         provider.getFirestore()

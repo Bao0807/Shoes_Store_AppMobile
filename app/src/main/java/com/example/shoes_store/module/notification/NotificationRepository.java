@@ -7,32 +7,29 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.shoes_store.core.BaseFirestoreRepository;
 import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.core.ResourceCallback;
 import com.google.firebase.Timestamp;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Repository sở hữu Thông báo người dùng (`users/{uid}/notifications`) trên Cloud Firestore.
  */
-public class NotificationRepository {
+public class NotificationRepository extends BaseFirestoreRepository {
 
     private static final String TAG = "NotificationRepository";
+    private static final String LISTENER_NOTIFICATIONS = "notifications";
     private static volatile NotificationRepository instance;
 
-    private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
     private final MutableLiveData<List<NotificationModel>> notificationsLiveData = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<Integer> unreadNotificationCountLiveData = new MutableLiveData<>(0);
-    @Nullable
-    private ListenerRegistration notificationsRegistration;
 
     private NotificationRepository() {
     }
@@ -48,41 +45,40 @@ public class NotificationRepository {
         return instance;
     }
 
+    @Override
+    public void onSessionStart(@NonNull String uid, @NonNull FirebaseUser authUser) {
+        startUserListening(uid);
+    }
+
+    @Override
+    public void onSessionEnd() {
+        stopUserListening();
+    }
+
     // ===== 1. REALTIME =====
 
     public void startUserListening(@NonNull String uid) {
         stopUserListening();
-        notificationsRegistration = provider.getFirestore()
-                .collection(FirebaseProviderHelper.COL_USERS)
-                .document(uid)
-                .collection(FirebaseProviderHelper.SUB_NOTIFICATIONS)
-                .addSnapshotListener((snap, error) -> {
-                    if (error != null) {
-                        Log.w(TAG, "Notifications listener error: " + error.getMessage());
-                    }
-                    if (snap == null) {
-                        return;
-                    }
-                    List<NotificationModel> list = new ArrayList<>();
+        replaceUserListener(LISTENER_NOTIFICATIONS, listenCollection(
+                userSubCollection(uid, FirebaseProviderHelper.SUB_NOTIFICATIONS),
+                TAG,
+                NotificationMapper::fromSnapshot,
+                (a, b) -> Long.compare(b.getCreatedAtMillis(), a.getCreatedAtMillis()),
+                list -> {
                     int unread = 0;
-                    for (DocumentSnapshot doc : snap.getDocuments()) {
-                        NotificationModel item = NotificationMapper.fromSnapshot(doc, uid);
-                        list.add(item);
+                    for (NotificationModel item : list) {
                         if (item.isUnread()) {
                             unread++;
                         }
                     }
-                    Collections.sort(list, (a, b) -> Long.compare(b.getCreatedAtMillis(), a.getCreatedAtMillis()));
                     notificationsLiveData.setValue(list);
                     unreadNotificationCountLiveData.setValue(unread);
-                });
+                }
+        ));
     }
 
     public void stopUserListening() {
-        if (notificationsRegistration != null) {
-            notificationsRegistration.remove();
-            notificationsRegistration = null;
-        }
+        clearUserListeners();
         notificationsLiveData.setValue(new ArrayList<>());
         unreadNotificationCountLiveData.setValue(0);
     }
@@ -100,7 +96,7 @@ public class NotificationRepository {
     // ===== 3. GHI =====
 
     public void markRead(@NonNull String id, @Nullable ResourceCallback<Void> callback) {
-        CollectionReference ref = userNotificationsRef();
+        CollectionReference ref = currentUserSubCollection(FirebaseProviderHelper.SUB_NOTIFICATIONS);
         if (ref == null || id.isEmpty()) {
             return;
         }
@@ -119,7 +115,7 @@ public class NotificationRepository {
     }
 
     public void markAllRead(@Nullable ResourceCallback<Void> callback) {
-        CollectionReference ref = userNotificationsRef();
+        CollectionReference ref = currentUserSubCollection(FirebaseProviderHelper.SUB_NOTIFICATIONS);
         List<NotificationModel> list = notificationsLiveData.getValue();
         if (ref == null) {
             if (callback != null) {
@@ -133,7 +129,7 @@ public class NotificationRepository {
             }
             return;
         }
-        WriteBatch batch = provider.getFirestore().batch();
+        WriteBatch batch = db().batch();
         boolean hasUnread = false;
         for (NotificationModel item : list) {
             if (item.isUnread()) {
@@ -172,19 +168,5 @@ public class NotificationRepository {
         return NotificationMapper.toMap(
                 notificationId, uid, title, message, NotificationModel.Type.ORDER, orderCode, now
         );
-    }
-
-    // ===== 4. PRIVATE HELPERS =====
-
-    @Nullable
-    private CollectionReference userNotificationsRef() {
-        String uid = provider.getCurrentUid();
-        if (uid == null) {
-            return null;
-        }
-        return provider.getFirestore()
-                .collection(FirebaseProviderHelper.COL_USERS)
-                .document(uid)
-                .collection(FirebaseProviderHelper.SUB_NOTIFICATIONS);
     }
 }

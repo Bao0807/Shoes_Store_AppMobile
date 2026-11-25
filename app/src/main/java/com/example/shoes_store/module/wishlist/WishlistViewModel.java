@@ -4,8 +4,10 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.product.ProductModel;
+import com.example.shoes_store.module.product.ProductRepository;
 
 import java.util.List;
 import java.util.Set;
@@ -16,18 +18,15 @@ import java.util.Set;
 public class WishlistViewModel extends ViewModel {
 
     private final WishlistRepository repository = WishlistRepository.getInstance();
-    private String selectedCategory = "Tất cả";
+    private final ProductRepository productRepository = ProductRepository.getInstance();
+    private String selectedCategory = CategoryStyleHelper.CAT_ALL;
 
     public LiveData<Set<String>> getFavoriteIdsLiveData() {
         return repository.getFavoriteIdsLiveData();
     }
 
     public LiveData<List<ProductModel>> getProductsLiveData() {
-        return repository.getProductsLiveData();
-    }
-
-    public String getSelectedCategory() {
-        return selectedCategory;
+        return productRepository.getProductsLiveData();
     }
 
     public void setSelectedCategory(@NonNull String category) {

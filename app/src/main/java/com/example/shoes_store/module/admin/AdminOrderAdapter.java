@@ -1,7 +1,5 @@
 package com.example.shoes_store.module.admin;
 
-import android.content.Context;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -10,19 +8,19 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseListAdapter;
 import com.example.shoes_store.core.CurrencyFormatUtil;
-import com.example.shoes_store.module.order.OrderHistoryAdapter;
 import com.example.shoes_store.module.order.OrderItemModel;
 import com.example.shoes_store.module.order.OrderModel;
+import com.example.shoes_store.module.order.OrderStatusHelper;
 import com.google.android.material.button.MaterialButton;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Adapter hiển thị danh sách toàn bộ đơn hàng cho Admin kèm nút duyệt / giao / hủy theo trạng thái.
  */
-public class AdminOrderAdapter extends RecyclerView.Adapter<AdminOrderAdapter.OrderViewHolder> {
+public class AdminOrderAdapter extends BaseListAdapter<OrderModel, AdminOrderAdapter.OrderViewHolder> {
 
     public interface OnAdminOrderActionListener {
         void onOrderCardClick(@NonNull OrderModel order);
@@ -32,37 +30,25 @@ public class AdminOrderAdapter extends RecyclerView.Adapter<AdminOrderAdapter.Or
         void onCancelOrder(@NonNull OrderModel order);
     }
 
-    private final List<OrderModel> orders = new ArrayList<>();
     private final OnAdminOrderActionListener listener;
 
     public AdminOrderAdapter(@NonNull OnAdminOrderActionListener listener) {
         this.listener = listener;
     }
 
-    public void submitList(List<OrderModel> list) {
-        orders.clear();
-        if (list != null) {
-            orders.addAll(list);
-        }
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public OrderViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.admin_item_order, parent, false);
-        return new OrderViewHolder(view);
+        return new OrderViewHolder(inflate(parent, R.layout.admin_item_order));
     }
 
     @Override
     public void onBindViewHolder(@NonNull OrderViewHolder holder, int position) {
-        OrderModel order = orders.get(position);
-        Context context = holder.itemView.getContext();
+        OrderModel order = getItem(position);
 
         holder.codeText.setText("Mã đơn #" + order.getOrderCode());
         holder.dateText.setText("Đặt lúc " + order.getCreatedAt());
-        OrderHistoryAdapter.applyStatusStyle(holder.statusBadge, order.getStatus(), context);
+        OrderStatusHelper.applyStatusBadge(holder.statusBadge, order.getStatus());
 
         holder.receiverText.setText(order.getReceiverInfo());
         holder.addressText.setText(order.getAddressSummary());
@@ -104,11 +90,6 @@ public class AdminOrderAdapter extends RecyclerView.Adapter<AdminOrderAdapter.Or
         }
 
         holder.itemView.setOnClickListener(v -> listener.onOrderCardClick(order));
-    }
-
-    @Override
-    public int getItemCount() {
-        return orders.size();
     }
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {

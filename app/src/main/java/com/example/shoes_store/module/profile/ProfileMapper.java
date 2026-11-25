@@ -4,8 +4,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.core.FirestoreReadUtil;
-import com.example.shoes_store.module.admin.AdminService;
+import com.example.shoes_store.core.UserRoleHelper;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -47,15 +48,15 @@ public final class ProfileMapper {
     public static ProfileModel profileFromSnapshot(@NonNull DocumentSnapshot doc, @NonNull String uid) {
         String avatarUrl = FirestoreReadUtil.readString(doc, FIELD_AVATAR_URL, "");
         String email = FirestoreReadUtil.readString(doc, FIELD_EMAIL, "");
-        String rawRole = FirestoreReadUtil.readString(doc, FIELD_ROLE, AdminService.ROLE_USERS);
-        String resolvedRole = AdminService.resolveRole(rawRole, email);
+        String rawRole = FirestoreReadUtil.readString(doc, FIELD_ROLE, UserRoleHelper.ROLE_USERS);
+        String resolvedRole = UserRoleHelper.resolveRole(rawRole, email);
         return new ProfileModel(
                 uid,
                 FirestoreReadUtil.readString(doc, FIELD_FULL_NAME, "Runner"),
                 email,
                 FirestoreReadUtil.readString(doc, FIELD_PHONE, ""),
                 FirestoreReadUtil.readString(doc, FIELD_PREFERRED_SIZE, "42"),
-                FirestoreReadUtil.readString(doc, FIELD_RUNNING_GOAL, "Daily"),
+                FirestoreReadUtil.readString(doc, FIELD_RUNNING_GOAL, CategoryStyleHelper.CAT_DAILY),
                 resolvedRole,
                 R.drawable.img_avatar_runner,
                 avatarUrl.isEmpty() ? null : avatarUrl
@@ -71,8 +72,8 @@ public final class ProfileMapper {
                 email,
                 "",
                 "42",
-                "Daily",
-                AdminService.resolveRole(null, email),
+                CategoryStyleHelper.CAT_DAILY,
+                UserRoleHelper.resolveRole(null, email),
                 R.drawable.img_avatar_runner,
                 null
         );
@@ -110,8 +111,8 @@ public final class ProfileMapper {
         data.put(FIELD_PHONE, phone);
         data.put(FIELD_AVATAR_URL, "");
         data.put(FIELD_PREFERRED_SIZE, "42");
-        data.put(FIELD_RUNNING_GOAL, "Daily");
-        data.put(FIELD_ROLE, AdminService.resolveRole(null, email));
+        data.put(FIELD_RUNNING_GOAL, CategoryStyleHelper.CAT_DAILY);
+        data.put(FIELD_ROLE, UserRoleHelper.resolveRole(null, email));
         data.put(FIELD_RECENT_SEARCHES, new ArrayList<>(recentSearches));
         data.put(FIELD_CREATED_AT, now);
         data.put(FIELD_UPDATED_AT, now);
@@ -142,10 +143,9 @@ public final class ProfileMapper {
     }
 
     @NonNull
-    public static ProfileAddressModel addressFromSnapshot(@NonNull DocumentSnapshot doc, @NonNull String uid) {
+    public static ProfileAddressModel addressFromSnapshot(@NonNull DocumentSnapshot doc) {
         return new ProfileAddressModel(
                 FirestoreReadUtil.readString(doc, FIELD_ADDRESS_ID, doc.getId()),
-                FirestoreReadUtil.readString(doc, FIELD_USER_ID, uid),
                 FirestoreReadUtil.readString(doc, FIELD_RECEIVER_NAME, ""),
                 FirestoreReadUtil.readString(doc, FIELD_PHONE, ""),
                 FirestoreReadUtil.readString(doc, FIELD_ADDRESS_DETAIL, ""),

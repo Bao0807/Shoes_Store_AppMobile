@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.core.SessionSyncHelper;
 import com.google.firebase.auth.FirebaseUser;
 
 /**
@@ -14,6 +15,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class AuthViewModel extends ViewModel {
 
     private final AuthRepository repository = AuthRepository.getInstance();
+    private final SessionSyncHelper sessionSyncHelper = SessionSyncHelper.getInstance();
     private final MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
 
     public LiveData<Boolean> getLoadingLiveData() {
@@ -115,5 +117,9 @@ public class AuthViewModel extends ViewModel {
 
     public void logout() {
         repository.logout();
+    }
+
+    public void markAdminAutoRouted() {
+        sessionSyncHelper.markAdminAutoRouted();
     }
 }

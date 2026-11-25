@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
@@ -68,14 +69,6 @@ public final class RemoteImageHelper {
                 && !TextUtils.isEmpty(host);
     }
 
-    @NonNull
-    public static String drawableUri(@NonNull Context context, @DrawableRes int resId) {
-        if (resId == 0) {
-            return "";
-        }
-        return DRAWABLE_PREFIX + context.getResources().getResourceEntryName(resId);
-    }
-
     public static void bindImage(
             @NonNull ImageView imageView,
             @Nullable String source,
@@ -105,14 +98,15 @@ public final class RemoteImageHelper {
             if (fallbackResId != 0) {
                 imageView.setImageResource(fallbackResId);
             }
+            WeakReference<ImageView> viewRef = new WeakReference<>(imageView);
             NETWORK_EXECUTOR.execute(() -> {
                 Bitmap bitmap = downloadBitmap(trimmed, MAX_REMOTE_DIMENSION_PX);
                 if (bitmap != null) {
                     MEMORY_CACHE.put(trimmed, bitmap);
                     MAIN_HANDLER.post(() -> {
-                        Object currentTag = imageView.getTag(R.id.tag_remote_image);
-                        if (trimmed.equals(currentTag)) {
-                            imageView.setImageBitmap(bitmap);
+                        ImageView target = viewRef.get();
+                        if (target != null && trimmed.equals(target.getTag(R.id.tag_remote_image))) {
+                            target.setImageBitmap(bitmap);
                         }
                     });
                 }
@@ -124,14 +118,36 @@ public final class RemoteImageHelper {
             try {
                 Uri uri = Uri.parse(trimmed);
                 if ("file".equalsIgnoreCase(uri.getScheme()) && uri.getPath() != null) {
-                    File file = new File(uri.getPath());
-                    if (file.exists()) {
-                        Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
-                        if (bitmap != null) {
-                            imageView.setImageBitmap(bitmap);
-                            return;
-                        }
+                    Bitmap cached = MEMORY_CACHE.get(trimmed);
+                    if (cached != null && !cached.isRecycled()) {
+                        imageView.setImageBitmap(cached);
+                        return;
                     }
+                    if (fallbackResId != 0) {
+                        imageView.setImageResource(fallbackResId);
+                    }
+                    String filePath = uri.getPath();
+                    WeakReference<ImageView> viewRef = new WeakReference<>(imageView);
+                    NETWORK_EXECUTOR.execute(() -> {
+                        try {
+                            File file = new File(filePath);
+                            if (file.exists()) {
+                                Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+                                if (bitmap != null) {
+                                    MEMORY_CACHE.put(trimmed, bitmap);
+                                    MAIN_HANDLER.post(() -> {
+                                        ImageView target = viewRef.get();
+                                        if (target != null && trimmed.equals(target.getTag(R.id.tag_remote_image))) {
+                                            target.setImageBitmap(bitmap);
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.w(TAG, "Failed to decode local image file (" + filePath + "): " + e.getMessage());
+                        }
+                    });
+                    return;
                 } else {
                     imageView.setImageURI(null);
                     imageView.setImageURI(uri);
@@ -139,8 +155,8 @@ public final class RemoteImageHelper {
                         return;
                     }
                 }
-            } catch (Exception ignored) {
-                // Fallback về ảnh mặc định nếu URI không hợp lệ
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to bind local image URI (" + trimmed + "): " + e.getMessage());
             }
         }
 
@@ -170,13 +186,19 @@ public final class RemoteImageHelper {
             }
             return;
         }
+        WeakReference<ImageView> viewRef = new WeakReference<>(imageView);
         NETWORK_EXECUTOR.execute(() -> {
             Bitmap bitmap = downloadBitmap(trimmed, MAX_REMOTE_DIMENSION_PX);
+            if (bitmap != null) {
+                MEMORY_CACHE.put(trimmed, bitmap);
+            }
             MAIN_HANDLER.post(() -> {
                 if (bitmap != null) {
-                    MEMORY_CACHE.put(trimmed, bitmap);
-                    imageView.setTag(R.id.tag_remote_image, trimmed);
-                    imageView.setImageBitmap(bitmap);
+                    ImageView target = viewRef.get();
+                    if (target != null) {
+                        target.setTag(R.id.tag_remote_image, trimmed);
+                        target.setImageBitmap(bitmap);
+                    }
                     if (listener != null) {
                         listener.onResult(true, null);
                     }

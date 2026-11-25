@@ -49,6 +49,14 @@ public class VoucherBottomSheet extends BottomSheetDialogFragment {
         return sheet;
     }
 
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (savedInstanceState != null && listener == null) {
+            dismissAllowingStateLoss();
+        }
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -58,6 +66,10 @@ public class VoucherBottomSheet extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        if (listener == null) {
+            dismissAllowingStateLoss();
+            return;
+        }
 
         TextView subtotalText = view.findViewById(R.id.voucher_sheet_subtotal);
         subtotalText.setText("Đơn tạm tính: " + CurrencyFormatUtil.formatVnd(subtotal));
@@ -94,7 +106,7 @@ public class VoucherBottomSheet extends BottomSheetDialogFragment {
                 Toast.makeText(requireContext(), "Vui lòng nhập mã voucher", Toast.LENGTH_SHORT).show();
                 return;
             }
-            VoucherModel matched = findByCode(entered);
+            VoucherModel matched = VoucherService.findByCode(vouchers, entered);
             if (matched == null) {
                 Toast.makeText(requireContext(), "Mã voucher không hợp lệ", Toast.LENGTH_SHORT).show();
                 return;
@@ -126,15 +138,5 @@ public class VoucherBottomSheet extends BottomSheetDialogFragment {
             }
             dismiss();
         });
-    }
-
-    @Nullable
-    private VoucherModel findByCode(String code) {
-        for (VoucherModel voucher : vouchers) {
-            if (voucher.getCode().equalsIgnoreCase(code)) {
-                return voucher;
-            }
-        }
-        return null;
     }
 }

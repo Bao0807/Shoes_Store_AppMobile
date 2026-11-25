@@ -1,6 +1,5 @@
 package com.example.shoes_store.module.home;
 
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -10,49 +9,36 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseListAdapter;
 import com.example.shoes_store.core.RemoteImageHelper;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Adapter cho banner nổi bật trên Trang chủ.
  */
-public class HomeBannerAdapter extends RecyclerView.Adapter<HomeBannerAdapter.BannerViewHolder> {
+public class HomeBannerAdapter extends BaseListAdapter<HomeBannerModel, HomeBannerAdapter.BannerViewHolder> {
 
     public interface OnBannerClickListener {
         void onBannerClick(HomeBannerModel banner);
     }
 
-    private final List<HomeBannerModel> items = new ArrayList<>();
     private final OnBannerClickListener listener;
 
     public HomeBannerAdapter(List<HomeBannerModel> initialItems, OnBannerClickListener listener) {
-        if (initialItems != null) {
-            items.addAll(initialItems);
-        }
+        setInitialItems(initialItems);
         this.listener = listener;
-    }
-
-    public void submitBanners(List<HomeBannerModel> newItems) {
-        items.clear();
-        if (newItems != null) {
-            items.addAll(newItems);
-        }
-        notifyDataSetChanged();
     }
 
     @NonNull
     @Override
     public BannerViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.home_item_banner, parent, false);
-        return new BannerViewHolder(view);
+        return new BannerViewHolder(inflate(parent, R.layout.home_item_banner));
     }
 
     @Override
     public void onBindViewHolder(@NonNull BannerViewHolder holder, int position) {
-        HomeBannerModel item = items.get(position);
+        HomeBannerModel item = getItem(position);
         RemoteImageHelper.bindImage(holder.imageView, item.getImageUrl(), item.getImageResId());
         holder.badgeView.setText(item.getBadge());
         holder.titleView.setText(item.getTitle());
@@ -63,11 +49,6 @@ public class HomeBannerAdapter extends RecyclerView.Adapter<HomeBannerAdapter.Ba
                 listener.onBannerClick(item);
             }
         });
-    }
-
-    @Override
-    public int getItemCount() {
-        return items.size();
     }
 
     static class BannerViewHolder extends RecyclerView.ViewHolder {

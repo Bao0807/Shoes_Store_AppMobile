@@ -4,20 +4,21 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.CategoryStyleHelper;
+import com.example.shoes_store.core.DialogHelper;
 import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.module.product.ProductMapper;
 import com.example.shoes_store.module.product.ProductModel;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -58,99 +59,108 @@ public final class AdminProductDialog {
             thumbInput.setText(existing.getThumbnailUrl());
             colorsInput.setText(TextUtils.join(", ", existing.getColorNames()));
             sizesInput.setText(TextUtils.join(", ", existing.getAllSizes()));
-            int defaultStock = existing.getOutOfStockSizes().size() >= existing.getAllSizes().size()
-                    && !existing.getAllSizes().isEmpty() ? 0 : 10;
-            stockInput.setText(String.valueOf(defaultStock));
+            stockInput.setText("");
+            stockInput.setHint("Trống = giữ tồn kho cũ");
             descInput.setText(existing.getDescription());
         } else {
-            categoryInput.setText("Daily");
+            categoryInput.setText(CategoryStyleHelper.CAT_DAILY);
             colorsInput.setText("Trắng / Cam, Đen");
             sizesInput.setText("39, 40, 41, 42, 43");
+            stockInput.setHint("Tồn kho / size");
             stockInput.setText("10");
         }
 
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle(existing == null ? "Thêm mẫu giày mới" : "Sửa giày & Cập nhật tồn kho")
-                .setView(view)
-                .setNegativeButton("Hủy", null)
-                .setPositiveButton("Lưu & Đồng bộ kho", null)
-                .create();
+        DialogHelper.showFormDialog(
+                context,
+                existing == null ? "Thêm mẫu giày mới" : "Sửa giày & Cập nhật tồn kho",
+                view,
+                "Hủy",
+                "Lưu & Đồng bộ kho",
+                (dialog, saveBtn) -> {
+                    String name = DialogHelper.textOf(nameInput);
+                    String brand = DialogHelper.textOf(brandInput);
+                    String category = DialogHelper.textOf(categoryInput);
+                    long price = DialogHelper.parseLong(DialogHelper.textOf(priceInput), 0L);
+                    long origPrice = DialogHelper.parseLong(DialogHelper.textOf(origPriceInput), price);
+                    String thumbUrl = DialogHelper.textOf(thumbInput);
+                    List<String> colors = AdminService.parseCsvList(DialogHelper.textOf(colorsInput), DEFAULT_COLORS);
+                    List<String> hexes = buildColorHexes(colors.size(), existing != null ? existing.getColorHexes() : null);
+                    List<String> sizes = AdminService.parseCsvList(DialogHelper.textOf(sizesInput), DEFAULT_SIZES);
+                    Integer stockOverride = resolveStockOverride(DialogHelper.textOf(stockInput), existing != null);
+                    String desc = DialogHelper.textOf(descInput);
 
-        dialog.setOnShowListener(d -> {
-            Button saveBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-            saveBtn.setOnClickListener(v -> {
-                String name = textOf(nameInput);
-                String brand = textOf(brandInput);
-                String category = textOf(categoryInput);
-                long price = parseLong(textOf(priceInput), 0L);
-                long origPrice = parseLong(textOf(origPriceInput), price);
-                String thumbUrl = textOf(thumbInput);
-                List<String> colors = AdminService.parseCsvList(textOf(colorsInput), DEFAULT_COLORS);
-                List<String> hexes = existing != null && !existing.getColorHexes().isEmpty()
-                        ? existing.getColorHexes()
-                        : DEFAULT_HEXES;
-                List<String> sizes = AdminService.parseCsvList(textOf(sizesInput), DEFAULT_SIZES);
-                int stockPerSize = (int) parseLong(textOf(stockInput), 10L);
-                String desc = textOf(descInput);
+                    String weight = existing != null && !existing.getWeightGrams().isEmpty() ? existing.getWeightGrams() : ProductMapper.DEFAULT_WEIGHT_GRAMS;
+                    String drop = existing != null && !existing.getHeelDropMm().isEmpty() ? existing.getHeelDropMm() : ProductMapper.DEFAULT_HEEL_DROP_MM;
+                    String cushion = existing != null && !existing.getCushionLevel().isEmpty() ? existing.getCushionLevel() : ProductMapper.DEFAULT_CUSHION_LEVEL;
+                    String surface = existing != null && !existing.getSurfaceType().isEmpty() ? existing.getSurfaceType() : ProductMapper.DEFAULT_SURFACE_TYPE;
+                    boolean active = existing == null || existing.isActive();
 
-                String weight = existing != null && !existing.getWeightGrams().isEmpty() ? existing.getWeightGrams() : "250g";
-                String drop = existing != null && !existing.getHeelDropMm().isEmpty() ? existing.getHeelDropMm() : "8 mm";
-                String cushion = existing != null && !existing.getCushionLevel().isEmpty() ? existing.getCushionLevel() : "Cao";
-                String surface = existing != null && !existing.getSurfaceType().isEmpty() ? existing.getSurfaceType() : "Road";
-                boolean active = existing == null || existing.isActive();
+                    saveBtn.setEnabled(false);
+                    viewModel.saveProductWithVariants(
+                            existing != null ? existing.getId() : null,
+                            name,
+                            brand,
+                            category,
+                            price,
+                            origPrice,
+                            thumbUrl,
+                            weight,
+                            drop,
+                            cushion,
+                            surface,
+                            desc,
+                            colors,
+                            hexes,
+                            sizes,
+                            stockOverride,
+                            active,
+                            new ResourceCallback<Void>() {
+                                @Override
+                                public void onSuccess(Void data) {
+                                    if (!DialogHelper.isHostAlive(context)) {
+                                        return;
+                                    }
+                                    Toast.makeText(context, "Đã lưu sản phẩm và đồng bộ tồn kho các size", Toast.LENGTH_SHORT).show();
+                                    if (dialog.isShowing()) {
+                                        dialog.dismiss();
+                                    }
+                                }
 
-                saveBtn.setEnabled(false);
-                viewModel.saveProductWithVariants(
-                        existing != null ? existing.getId() : null,
-                        name,
-                        brand,
-                        category,
-                        price,
-                        origPrice,
-                        thumbUrl,
-                        weight,
-                        drop,
-                        cushion,
-                        surface,
-                        desc,
-                        colors,
-                        hexes,
-                        sizes,
-                        stockPerSize,
-                        active,
-                        new ResourceCallback<Void>() {
-                            @Override
-                            public void onSuccess(Void data) {
-                                Toast.makeText(context, "Đã lưu sản phẩm và đồng bộ tồn kho các size", Toast.LENGTH_SHORT).show();
-                                dialog.dismiss();
+                                @Override
+                                public void onError(String message) {
+                                    if (!DialogHelper.isHostAlive(context)) {
+                                        return;
+                                    }
+                                    saveBtn.setEnabled(true);
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                }
                             }
-
-                            @Override
-                            public void onError(String message) {
-                                saveBtn.setEnabled(true);
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                );
-            });
-        });
-
-        dialog.show();
+                    );
+                }
+        );
     }
 
     @NonNull
-    private static String textOf(@NonNull EditText editText) {
-        return editText.getText() != null ? editText.getText().toString().trim() : "";
+    private static List<String> buildColorHexes(int colorCount, @Nullable List<String> existingHexes) {
+        List<String> result = new ArrayList<>();
+        if (existingHexes != null) {
+            result.addAll(existingHexes);
+        }
+        while (result.size() < colorCount) {
+            result.add(DEFAULT_HEXES.get(result.size() % DEFAULT_HEXES.size()));
+        }
+        return result;
     }
 
-    private static long parseLong(@NonNull String raw, long fallback) {
-        if (raw.isEmpty()) {
-            return fallback;
+    @Nullable
+    private static Integer resolveStockOverride(@NonNull String rawStock, boolean isEditMode) {
+        if (rawStock.isEmpty()) {
+            return isEditMode ? null : 10;
         }
         try {
-            return Long.parseLong(raw.replaceAll("[^0-9-]", ""));
+            return Integer.parseInt(rawStock);
         } catch (NumberFormatException e) {
-            return fallback;
+            return -1;
         }
     }
 }

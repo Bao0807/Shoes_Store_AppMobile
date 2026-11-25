@@ -6,23 +6,28 @@ import android.graphics.BitmapFactory;
 import android.graphics.ImageDecoder;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.widget.ImageView;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.example.shoes_store.module.profile.ProfileModel;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Tiện ích hiển thị, tải từ URL và lưu ảnh đại diện hồ sơ người dùng.
  */
 public final class AvatarImageHelper {
+
+    private static final String TAG = "AvatarImageHelper";
 
     public interface OnAvatarUrlResultListener {
         void onResult(boolean success, @Nullable String errorMessage);
@@ -30,19 +35,14 @@ public final class AvatarImageHelper {
 
     private static final int MAX_AVATAR_DIMENSION_PX = 512;
     private static final int JPEG_QUALITY = 88;
+    private static final ExecutorService IO_EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     private AvatarImageHelper() {
     }
 
     public static boolean isHttpUrl(@Nullable String value) {
         return RemoteImageHelper.isHttpUrl(value);
-    }
-
-    public static void bindAvatar(@NonNull ImageView imageView, @Nullable ProfileModel profile) {
-        if (profile == null) {
-            return;
-        }
-        bindAvatar(imageView, profile.getAvatarUri(), profile.getAvatarResId());
     }
 
     public static void bindAvatar(
@@ -56,7 +56,6 @@ public final class AvatarImageHelper {
     public static void loadAvatarFromUrl(
             @NonNull ImageView imageView,
             @NonNull String rawUrl,
-            @DrawableRes int fallbackResId,
             @Nullable OnAvatarUrlResultListener listener
     ) {
         RemoteImageHelper.loadImageFromUrlWithCallback(imageView, rawUrl, (success, errorMessage) -> {
@@ -66,12 +65,48 @@ public final class AvatarImageHelper {
         });
     }
 
+    public static void saveAvatarFromUri(
+            @NonNull Context context,
+            @NonNull Uri sourceUri,
+            @NonNull ResourceCallback<String> callback
+    ) {
+        Context appContext = context.getApplicationContext();
+        IO_EXECUTOR.execute(() -> {
+            String savedUri = saveAvatarFromUriSync(appContext, sourceUri);
+            MAIN_HANDLER.post(() -> {
+                if (savedUri != null) {
+                    callback.onSuccess(savedUri);
+                } else {
+                    callback.onError("Không thể đọc ảnh đã chọn");
+                }
+            });
+        });
+    }
+
+    public static void saveAvatarBitmap(
+            @NonNull Context context,
+            @NonNull Bitmap bitmap,
+            @NonNull ResourceCallback<String> callback
+    ) {
+        Context appContext = context.getApplicationContext();
+        IO_EXECUTOR.execute(() -> {
+            String savedUri = saveAvatarBitmapSync(appContext, bitmap);
+            MAIN_HANDLER.post(() -> {
+                if (savedUri != null) {
+                    callback.onSuccess(savedUri);
+                } else {
+                    callback.onError("Không thể lưu ảnh vừa chụp");
+                }
+            });
+        });
+    }
+
     @Nullable
-    public static String saveAvatarFromUri(@NonNull Context context, @NonNull Uri sourceUri) {
+    private static String saveAvatarFromUriSync(@NonNull Context appContext, @NonNull Uri sourceUri) {
+        Bitmap bitmap = null;
         try {
-            Bitmap bitmap;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                ImageDecoder.Source source = ImageDecoder.createSource(context.getContentResolver(), sourceUri);
+                ImageDecoder.Source source = ImageDecoder.createSource(appContext.getContentResolver(), sourceUri);
                 bitmap = ImageDecoder.decodeBitmap(source, (decoder, info, src) -> {
                     decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
                     int width = info.getSize().getWidth();
@@ -85,21 +120,26 @@ public final class AvatarImageHelper {
                     }
                 });
             } else {
-                bitmap = decodeSampledBitmap(context, sourceUri);
+                bitmap = decodeSampledBitmap(appContext, sourceUri);
             }
             if (bitmap == null) {
                 return null;
             }
-            return saveAvatarBitmap(context, bitmap);
+            return saveAvatarBitmapSync(appContext, bitmap);
         } catch (IOException | SecurityException e) {
+            Log.w(TAG, "Save avatar from URI failed: " + e.getMessage());
             return null;
+        } finally {
+            if (bitmap != null && !bitmap.isRecycled()) {
+                bitmap.recycle();
+            }
         }
     }
 
     @Nullable
-    public static String saveAvatarBitmap(@NonNull Context context, @NonNull Bitmap bitmap) {
+    private static String saveAvatarBitmapSync(@NonNull Context appContext, @NonNull Bitmap bitmap) {
         Bitmap output = RemoteImageHelper.scaleDownIfNeeded(bitmap, MAX_AVATAR_DIMENSION_PX);
-        File file = new File(context.getFilesDir(), "avatar_" + System.currentTimeMillis() + ".jpg");
+        File file = new File(appContext.getFilesDir(), "avatar_" + System.currentTimeMillis() + ".jpg");
         try (FileOutputStream fos = new FileOutputStream(file)) {
             if (!output.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, fos)) {
                 return null;
@@ -107,6 +147,7 @@ public final class AvatarImageHelper {
             fos.flush();
             return Uri.fromFile(file).toString();
         } catch (IOException e) {
+            Log.w(TAG, "Save avatar bitmap failed: " + e.getMessage());
             return null;
         } finally {
             if (output != bitmap && !output.isRecycled()) {

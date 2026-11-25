@@ -3,6 +3,7 @@ package com.example.shoes_store.module.home;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.module.product.ProductModel;
 
 import java.util.ArrayList;
@@ -27,7 +28,13 @@ public final class HomeSearchService {
         Set<String> seen = new LinkedHashSet<>();
         seen.add(HomeFilterState.ALL);
         if (products == null || products.isEmpty()) {
-            seen.addAll(Arrays.asList("Daily", "Race", "Tempo", "Trail", "Recovery"));
+            seen.addAll(Arrays.asList(
+                    CategoryStyleHelper.CAT_DAILY,
+                    CategoryStyleHelper.CAT_RACE,
+                    CategoryStyleHelper.CAT_TEMPO,
+                    CategoryStyleHelper.CAT_TRAIL,
+                    CategoryStyleHelper.CAT_RECOVERY
+            ));
         } else {
             for (ProductModel p : products) {
                 String cat = p.getCategory().trim();

@@ -3,24 +3,22 @@ package com.example.shoes_store.module.admin;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseActivity;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.DialogHelper;
 import com.example.shoes_store.core.ResourceCallback;
-import com.example.shoes_store.core.UiInsetHelper;
 import com.example.shoes_store.module.auth.AuthLoginActivity;
-import com.example.shoes_store.module.auth.AuthRepository;
 import com.example.shoes_store.module.order.OrderItemModel;
 import com.example.shoes_store.module.order.OrderModel;
+import com.example.shoes_store.module.order.OrderService;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.voucher.VoucherModel;
 import com.google.android.material.button.MaterialButton;
@@ -36,7 +34,7 @@ import java.util.List;
  * - Tab 1: Quản lý Sản phẩm & Tồn kho biến thể
  * - Tab 2: Quản lý Kho Voucher
  */
-public class AdminDashboardActivity extends AppCompatActivity {
+public class AdminDashboardActivity extends BaseActivity {
 
     private AdminViewModel viewModel;
     private RecyclerView recyclerView;
@@ -59,9 +57,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        WindowCompat.enableEdgeToEdge(getWindow());
-        setContentView(R.layout.admin_dashboard_activity);
-        UiInsetHelper.applySystemBarInsets(findViewById(R.id.admin_root));
+        setEdgeToEdgeContent(R.layout.admin_dashboard_activity, R.id.admin_root);
 
         viewModel = new ViewModelProvider(this).get(AdminViewModel.class);
 
@@ -73,19 +69,23 @@ public class AdminDashboardActivity extends AppCompatActivity {
         kpiShippingText = findViewById(R.id.admin_kpi_shipping);
         kpiRevenueText = findViewById(R.id.admin_kpi_revenue);
 
-        findViewById(R.id.admin_back_btn).setOnClickListener(v -> finish());
+        bindBackButton(R.id.admin_back_btn);
         findViewById(R.id.admin_logout_btn).setOnClickListener(v ->
-                new AlertDialog.Builder(this)
-                        .setTitle("Đăng xuất Admin")
-                        .setMessage("Bạn muốn đăng xuất khỏi tài khoản Quản trị viên?")
-                        .setNegativeButton("Hủy", null)
-                        .setPositiveButton("Đăng xuất", (d, w) -> {
-                            AuthRepository.getInstance().logout();
-                            Toast.makeText(this, "Đã đăng xuất tài khoản Admin", Toast.LENGTH_SHORT).show();
+                DialogHelper.showConfirmDialog(
+                        this,
+                        "Đăng xuất Admin",
+                        "Bạn muốn đăng xuất khỏi tài khoản Quản trị viên?",
+                        "Hủy",
+                        "Đăng xuất",
+                        R.drawable.ic_logout,
+                        true,
+                        () -> {
+                            viewModel.logout();
+                            showToast("Đã đăng xuất tài khoản Admin");
                             AuthLoginActivity.open(this);
                             finish();
-                        })
-                        .show());
+                        }
+                ));
 
         setupAdapters();
         setupTabsAndFilters();
@@ -108,30 +108,32 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         ? "Chuyển đơn sang trạng thái Đang giao và gửi thông báo cho khách hàng?"
                         : "Xác nhận khách đã nhận giày? (Đơn COD sẽ tự chuyển sang Đã thanh toán và mở khóa quyền đánh giá sản phẩm cho khách).";
 
-                new AlertDialog.Builder(AdminDashboardActivity.this)
-                        .setTitle(actionTitle)
-                        .setMessage(actionMsg)
-                        .setNegativeButton("Đóng", null)
-                        .setPositiveButton("Xác nhận", (d, w) ->
-                                viewModel.updateOrderStatus(order.getOrderId(), nextStatus, toastCallback(
-                                        "Đã cập nhật đơn #" + order.getOrderCode() + " → " + nextStatus.getLabel()
-                                )))
-                        .show();
+                DialogHelper.showConfirmDialog(
+                        AdminDashboardActivity.this,
+                        actionTitle,
+                        actionMsg,
+                        "Đóng",
+                        "Xác nhận",
+                        () -> viewModel.updateOrderStatus(order.getOrderId(), nextStatus, toastCallback(
+                                "Đã cập nhật đơn #" + order.getOrderCode() + " → " + nextStatus.getLabel()
+                        ))
+                );
             }
 
             @Override
             public void onCancelOrder(@NonNull OrderModel order) {
-                new AlertDialog.Builder(AdminDashboardActivity.this)
-                        .setTitle("Hủy đơn #" + order.getOrderCode())
-                        .setMessage("Hủy đơn hàng này, tự động hoàn tồn kho các size và hoàn lượt voucher cho khách?")
-                        .setNegativeButton("Không", null)
-                        .setPositiveButton("Hủy đơn", (d, w) ->
-                                viewModel.updateOrderStatus(
-                                        order.getOrderId(),
-                                        OrderModel.Status.CANCELLED,
-                                        toastCallback("Đã hủy đơn #" + order.getOrderCode() + " và hoàn kho")
-                                ))
-                        .show();
+                DialogHelper.showConfirmDialog(
+                        AdminDashboardActivity.this,
+                        "Hủy đơn #" + order.getOrderCode(),
+                        "Hủy đơn hàng này, tự động hoàn tồn kho các size và hoàn lượt voucher cho khách?",
+                        "Không",
+                        "Hủy đơn",
+                        () -> viewModel.updateOrderStatus(
+                                order.getOrderId(),
+                                OrderModel.Status.CANCELLED,
+                                toastCallback("Đã hủy đơn #" + order.getOrderCode() + " và hoàn kho")
+                        )
+                );
             }
         });
 
@@ -243,8 +245,8 @@ public class AdminDashboardActivity extends AppCompatActivity {
     }
 
     private void updateKpis() {
-        int pending = AdminService.countOrdersByStatus(latestOrders, OrderModel.Status.PENDING);
-        int shipping = AdminService.countOrdersByStatus(latestOrders, OrderModel.Status.SHIPPING);
+        int pending = OrderService.countOrdersByStatus(latestOrders, OrderModel.Status.PENDING);
+        int shipping = OrderService.countOrdersByStatus(latestOrders, OrderModel.Status.SHIPPING);
         long revenue = AdminService.calculateCompletedRevenue(latestOrders);
 
         kpiPendingText.setText(String.valueOf(pending));
@@ -327,16 +329,12 @@ public class AdminDashboardActivity extends AppCompatActivity {
         return new ResourceCallback<Void>() {
             @Override
             public void onSuccess(Void data) {
-                if (!isFinishing() && !isDestroyed()) {
-                    Toast.makeText(AdminDashboardActivity.this, successMsg, Toast.LENGTH_SHORT).show();
-                }
+                showToast(successMsg);
             }
 
             @Override
             public void onError(String message) {
-                if (!isFinishing() && !isDestroyed()) {
-                    Toast.makeText(AdminDashboardActivity.this, message, Toast.LENGTH_LONG).show();
-                }
+                showLongToast(message);
             }
         };
     }

@@ -15,23 +15,6 @@ public final class UiInsetHelper {
     private UiInsetHelper() {
     }
 
-    public static void applyTopAndSideInsets(@NonNull View targetView) {
-        final int baseLeft = targetView.getPaddingLeft();
-        final int baseTop = targetView.getPaddingTop();
-        final int baseRight = targetView.getPaddingRight();
-        final int baseBottom = targetView.getPaddingBottom();
-        ViewCompat.setOnApplyWindowInsetsListener(targetView, (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(
-                    baseLeft + systemBars.left,
-                    baseTop + systemBars.top,
-                    baseRight + systemBars.right,
-                    baseBottom
-            );
-            return insets;
-        });
-    }
-
     public static void applyTopInset(@NonNull View targetView) {
         final int baseLeft = targetView.getPaddingLeft();
         final int baseTop = targetView.getPaddingTop();

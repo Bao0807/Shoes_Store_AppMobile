@@ -2,7 +2,6 @@ package com.example.shoes_store.module.admin;
 
 import android.content.Context;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -13,19 +12,19 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseListAdapter;
 import com.example.shoes_store.core.CurrencyFormatUtil;
 import com.example.shoes_store.core.RemoteImageHelper;
 import com.example.shoes_store.module.product.ProductModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Adapter quản lý danh sách Sản phẩm & Tồn kho trong Kênh Quản trị (Admin).
  */
-public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapter.ProductViewHolder> {
+public class AdminProductAdapter extends BaseListAdapter<ProductModel, AdminProductAdapter.ProductViewHolder> {
 
     public interface OnAdminProductActionListener {
         void onEditProduct(@NonNull ProductModel product);
@@ -33,32 +32,21 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
         void onToggleActive(@NonNull ProductModel product, boolean isActive);
     }
 
-    private final List<ProductModel> products = new ArrayList<>();
     private final OnAdminProductActionListener listener;
 
     public AdminProductAdapter(@NonNull OnAdminProductActionListener listener) {
         this.listener = listener;
     }
 
-    public void submitList(List<ProductModel> list) {
-        products.clear();
-        if (list != null) {
-            products.addAll(list);
-        }
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public ProductViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.admin_item_product, parent, false);
-        return new ProductViewHolder(view);
+        return new ProductViewHolder(inflate(parent, R.layout.admin_item_product));
     }
 
     @Override
     public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
-        ProductModel product = products.get(position);
+        ProductModel product = getItem(position);
         Context context = holder.itemView.getContext();
 
         RemoteImageHelper.bindImage(holder.imageView, product.getThumbnailUrl(), product.getImageResId());
@@ -93,11 +81,6 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
 
         holder.editBtn.setOnClickListener(v -> listener.onEditProduct(product));
         holder.itemView.setOnClickListener(v -> listener.onEditProduct(product));
-    }
-
-    @Override
-    public int getItemCount() {
-        return products.size();
     }
 
     static class ProductViewHolder extends RecyclerView.ViewHolder {

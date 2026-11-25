@@ -2,9 +2,7 @@ package com.example.shoes_store.module.voucher;
 
 import androidx.annotation.Nullable;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import com.example.shoes_store.core.DateFormatUtil;
 
 /**
  * Model mã giảm giá (Voucher) dùng chung cho Giỏ hàng, Đặt hàng, Thông báo và Kho Voucher.
@@ -22,18 +20,6 @@ public class VoucherModel {
     private final int usedCount;
     private final long expiryTimestampMillis;
     private final boolean active;
-
-    public VoucherModel(
-            String code,
-            String shortBadge,
-            String title,
-            String description,
-            long discountAmount,
-            long minOrderAmount,
-            String expiryDate
-    ) {
-        this(code, shortBadge, title, description, discountAmount, minOrderAmount, expiryDate, 0, 0, 0L, true);
-    }
 
     public VoucherModel(
             String code,
@@ -61,8 +47,7 @@ public class VoucherModel {
         if (expiryDate != null && !expiryDate.trim().isEmpty()) {
             this.expiryDate = expiryDate;
         } else if (expiryTimestampMillis > 0L) {
-            this.expiryDate = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                    .format(new Date(expiryTimestampMillis));
+            this.expiryDate = DateFormatUtil.formatDate(expiryTimestampMillis);
         } else {
             this.expiryDate = "";
         }

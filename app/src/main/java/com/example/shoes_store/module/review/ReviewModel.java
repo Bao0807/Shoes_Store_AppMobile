@@ -1,18 +1,15 @@
-package com.example.shoes_store.module.product;
+package com.example.shoes_store.module.review;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import com.example.shoes_store.core.DateFormatUtil;
 
 /**
  * Mẫu đánh giá từ người chạy bộ cho sản phẩm giày.
  */
-public class ProductReviewModel {
+public class ReviewModel {
 
-    private final String reviewId;
     private final String productId;
     private final String userId;
     private final String orderId;
@@ -23,12 +20,7 @@ public class ProductReviewModel {
     private final String comment;
     private final long createdAtMillis;
 
-    public ProductReviewModel(String reviewerName, float rating, String date, String comment) {
-        this("", "", "", "", reviewerName, "", rating, date, comment, 0L);
-    }
-
-    public ProductReviewModel(
-            @Nullable String reviewId,
+    public ReviewModel(
             @Nullable String productId,
             @Nullable String userId,
             @Nullable String orderId,
@@ -39,7 +31,6 @@ public class ProductReviewModel {
             @Nullable String comment,
             long createdAtMillis
     ) {
-        this.reviewId = reviewId != null ? reviewId : "";
         this.productId = productId != null ? productId : "";
         this.userId = userId != null ? userId : "";
         this.orderId = orderId != null ? orderId : "";
@@ -50,16 +41,11 @@ public class ProductReviewModel {
         if (date != null && !date.trim().isEmpty()) {
             this.date = date;
         } else if (createdAtMillis > 0L) {
-            this.date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date(createdAtMillis));
+            this.date = DateFormatUtil.formatDate(createdAtMillis);
         } else {
             this.date = "";
         }
         this.comment = comment != null ? comment : "";
-    }
-
-    @NonNull
-    public String getReviewId() {
-        return reviewId;
     }
 
     @NonNull

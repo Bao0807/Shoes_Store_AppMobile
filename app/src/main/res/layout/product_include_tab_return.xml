@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/detail_panel_return"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_outline"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-bold"
+        android:text="@string/product_return_policy_title"
+        android:textColor="@color/text_primary"
+        android:textSize="14.5sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:lineSpacingExtra="4dp"
+        android:text="@string/product_return_policy_time"
+        android:textColor="@color/text_secondary"
+        android:textSize="13.5sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:lineSpacingExtra="4dp"
+        android:text="@string/product_return_policy_condition"
+        android:textColor="@color/text_secondary"
+        android:textSize="13.5sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:lineSpacingExtra="4dp"
+        android:text="@string/product_return_policy_shipping"
+        android:textColor="@color/text_secondary"
+        android:textSize="13.5sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:lineSpacingExtra="4dp"
+        android:text="@string/product_return_policy_warranty"
+        android:textColor="@color/text_secondary"
+        android:textSize="13.5sp" />
+</LinearLayout>

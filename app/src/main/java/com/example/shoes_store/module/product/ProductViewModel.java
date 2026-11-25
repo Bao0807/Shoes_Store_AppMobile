@@ -6,29 +6,32 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.core.FirebaseProviderHelper;
+import com.example.shoes_store.module.cart.CartRepository;
 import com.example.shoes_store.module.order.OrderModel;
+import com.example.shoes_store.module.order.OrderRepository;
+import com.example.shoes_store.module.wishlist.WishlistRepository;
 import com.google.firebase.firestore.ListenerRegistration;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 /**
- * ViewModel cho màn Chi tiết sản phẩm (quản lý listener realtime variants & reviews).
+ * ViewModel cho màn Chi tiết sản phẩm (quản lý listener realtime biến thể tồn kho và giỏ/yêu thích).
  */
 public class ProductViewModel extends ViewModel {
 
     private final ProductRepository repository = ProductRepository.getInstance();
-    private final MutableLiveData<List<ProductVariantModel>> variantsLiveData = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<List<ProductReviewModel>> reviewsLiveData = new MutableLiveData<>(new ArrayList<>());
+    private final WishlistRepository wishlistRepository = WishlistRepository.getInstance();
+    private final OrderRepository orderRepository = OrderRepository.getInstance();
+    private final CartRepository cartRepository = CartRepository.getInstance();
+    private final FirebaseProviderHelper firebaseProvider = FirebaseProviderHelper.getInstance();
+    private final MutableLiveData<List<ProductVariantModel>> variantsLiveData = new MutableLiveData<>();
 
     @Nullable
     private String observedProductId;
     @Nullable
     private ListenerRegistration variantsRegistration;
-    @Nullable
-    private ListenerRegistration reviewsRegistration;
 
     @Nullable
     public ProductModel getProduct(@Nullable String productId) {
@@ -40,23 +43,12 @@ public class ProductViewModel extends ViewModel {
     }
 
     public LiveData<List<ProductVariantModel>> loadVariants(@NonNull String productId) {
-        ensureProductListeners(productId);
-        return variantsLiveData;
-    }
-
-    public LiveData<List<ProductReviewModel>> loadReviews(@NonNull String productId) {
-        ensureProductListeners(productId);
-        return reviewsLiveData;
-    }
-
-    private void ensureProductListeners(@NonNull String productId) {
-        if (productId.equals(observedProductId)) {
-            return;
+        if (!productId.equals(observedProductId)) {
+            detachListeners();
+            observedProductId = productId;
+            variantsRegistration = repository.observeVariants(productId, variantsLiveData);
         }
-        detachListeners();
-        observedProductId = productId;
-        variantsRegistration = repository.observeVariants(productId, variantsLiveData);
-        reviewsRegistration = repository.observeReviews(productId, reviewsLiveData);
+        return variantsLiveData;
     }
 
     private void detachListeners() {
@@ -64,42 +56,44 @@ public class ProductViewModel extends ViewModel {
             variantsRegistration.remove();
             variantsRegistration = null;
         }
-        if (reviewsRegistration != null) {
-            reviewsRegistration.remove();
-            reviewsRegistration = null;
-        }
     }
 
     public LiveData<Set<String>> getFavoriteIdsLiveData() {
-        return repository.getFavoriteIdsLiveData();
+        return wishlistRepository.getFavoriteIdsLiveData();
     }
 
     public LiveData<List<OrderModel>> getOrdersLiveData() {
-        return repository.getOrdersLiveData();
+        return orderRepository.getOrdersLiveData();
     }
 
     public boolean toggleFavorite(@NonNull String productId) {
-        return repository.toggleFavorite(productId);
+        return wishlistRepository.toggleFavorite(productId);
+    }
+
+    public boolean isSignedIn() {
+        return firebaseProvider.isSignedIn();
+    }
+
+    @Nullable
+    public String getCurrentUid() {
+        return firebaseProvider.getCurrentUid();
     }
 
     public boolean addToCart(
             @NonNull ProductModel product,
-            @Nullable ProductVariantModel variant,
+            @NonNull ProductVariantModel variant,
             @NonNull String size,
             @NonNull String colorName,
             int qty
     ) {
-        return repository.addToCart(product, variant, size, colorName, qty);
-    }
-
-    public void submitReview(
-            @NonNull String productId,
-            @NonNull String orderId,
-            float rating,
-            @NonNull String comment,
-            @NonNull ResourceCallback<Void> callback
-    ) {
-        repository.submitReview(productId, orderId, rating, comment, callback);
+        return cartRepository.addToCartWithinStock(
+                product,
+                variant.getVariantId(),
+                size,
+                colorName,
+                qty,
+                variant.getStockQty()
+        );
     }
 
     @Override

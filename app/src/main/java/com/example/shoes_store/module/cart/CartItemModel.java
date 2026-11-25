@@ -14,20 +14,9 @@ public class CartItemModel {
     private final String variantId;
     private final String size;
     private final String colorName;
-    private int quantity;
-    private boolean selected;
+    private final int quantity;
+    private final boolean selected;
     private final long updatedAtMillis;
-
-    public CartItemModel(
-            String id,
-            ProductModel product,
-            String size,
-            String colorName,
-            int quantity,
-            boolean selected
-    ) {
-        this(id, product, "", size, colorName, quantity, selected, 0L);
-    }
 
     public CartItemModel(
             String id,
@@ -78,16 +67,8 @@ public class CartItemModel {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
     public boolean isSelected() {
         return selected;
-    }
-
-    public void setSelected(boolean selected) {
-        this.selected = selected;
     }
 
     public long getUpdatedAtMillis() {

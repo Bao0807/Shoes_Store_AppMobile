@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.voucher.VoucherModel;
+import com.example.shoes_store.module.voucher.VoucherRepository;
+import com.example.shoes_store.module.voucher.VoucherService;
 
 import java.util.List;
 
@@ -16,6 +18,7 @@ import java.util.List;
 public class CartViewModel extends ViewModel {
 
     private final CartRepository repository = CartRepository.getInstance();
+    private final VoucherRepository voucherRepository = VoucherRepository.getInstance();
     @Nullable
     private VoucherModel selectedVoucher;
 
@@ -24,11 +27,11 @@ public class CartViewModel extends ViewModel {
     }
 
     public LiveData<List<VoucherModel>> getVouchersLiveData() {
-        return repository.getVouchersLiveData();
+        return voucherRepository.getVouchersLiveData();
     }
 
     public List<VoucherModel> getAvailableVouchers() {
-        return repository.getVouchers();
+        return voucherRepository.getVouchers();
     }
 
     @Nullable
@@ -61,14 +64,11 @@ public class CartViewModel extends ViewModel {
     }
 
     public long calculateEffectiveDiscount(long subtotal) {
-        if (selectedVoucher == null) {
-            return 0L;
-        }
-        if (!selectedVoucher.isEligible(subtotal)) {
+        long discount = VoucherService.resolveDiscountAmount(selectedVoucher, subtotal);
+        if (selectedVoucher != null && !selectedVoucher.isEligible(subtotal)) {
             selectedVoucher = null;
-            return 0L;
         }
-        return Math.min(selectedVoucher.getDiscountAmount(), subtotal);
+        return discount;
     }
 
     public void updateQuantity(

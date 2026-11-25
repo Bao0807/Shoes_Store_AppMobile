@@ -1,6 +1,5 @@
-package com.example.shoes_store.module.product;
+package com.example.shoes_store.module.review;
 
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -11,54 +10,35 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseListAdapter;
 import com.example.shoes_store.core.RemoteImageHelper;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
  * Adapter hiển thị danh sách đánh giá từ người mua thực.
  */
-public class ProductReviewAdapter extends RecyclerView.Adapter<ProductReviewAdapter.ReviewViewHolder> {
+public class ReviewAdapter extends BaseListAdapter<ReviewModel, ReviewAdapter.ReviewViewHolder> {
 
-    private final List<ProductReviewModel> reviews = new ArrayList<>();
-
-    public ProductReviewAdapter(@Nullable List<ProductReviewModel> initialReviews) {
-        if (initialReviews != null) {
-            reviews.addAll(initialReviews);
-        }
-    }
-
-    public void submitReviews(@Nullable List<ProductReviewModel> newReviews) {
-        reviews.clear();
-        if (newReviews != null) {
-            reviews.addAll(newReviews);
-        }
-        notifyDataSetChanged();
+    public ReviewAdapter(@Nullable List<ReviewModel> initialReviews) {
+        setInitialItems(initialReviews);
     }
 
     @NonNull
     @Override
     public ReviewViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.product_item_review, parent, false);
-        return new ReviewViewHolder(view);
+        return new ReviewViewHolder(inflate(parent, R.layout.review_item_card));
     }
 
     @Override
     public void onBindViewHolder(@NonNull ReviewViewHolder holder, int position) {
-        ProductReviewModel item = reviews.get(position);
+        ReviewModel item = getItem(position);
         RemoteImageHelper.bindImage(holder.avatarView, item.getReviewerAvatarUrl(), R.drawable.img_avatar_runner);
         holder.authorText.setText(item.getReviewerName());
         holder.ratingText.setText(String.format(Locale.US, "%.1f", item.getRating()));
         holder.dateText.setText(item.getDate());
         holder.commentText.setText(item.getComment());
-    }
-
-    @Override
-    public int getItemCount() {
-        return reviews.size();
     }
 
     static class ReviewViewHolder extends RecyclerView.ViewHolder {

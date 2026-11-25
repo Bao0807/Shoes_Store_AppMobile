@@ -8,44 +8,17 @@ import com.example.shoes_store.module.payment.PaymentModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Nghiệp vụ thuần Java cho Kênh Quản trị (Admin): phân quyền, máy trạng thái đơn hàng,
+ * Nghiệp vụ thuần Java cho Kênh Quản trị (Admin): máy trạng thái đơn hàng,
  * tính toán thống kê doanh thu và kiểm tra biểu mẫu Sản phẩm / Voucher.
  */
 public final class AdminService {
 
-    public static final String ROLE_ADMIN = "admin";
-    public static final String ROLE_USERS = "users";
-    public static final String DEFAULT_ADMIN_EMAIL = "admin@gmail.com";
     public static final String DEFAULT_ADMIN_PASS = "123456";
 
     private AdminService() {
-    }
-
-    public static boolean isDefaultAdminEmail(@Nullable String email) {
-        return email != null && DEFAULT_ADMIN_EMAIL.equalsIgnoreCase(email.trim());
-    }
-
-    public static boolean isAdminRole(@Nullable String role) {
-        if (role == null) {
-            return false;
-        }
-        String clean = role.trim();
-        return ROLE_ADMIN.equalsIgnoreCase(clean);
-    }
-
-    @NonNull
-    public static String normalizeRole(@Nullable String roleValue) {
-        return isAdminRole(roleValue) ? ROLE_ADMIN : ROLE_USERS;
-    }
-
-    @NonNull
-    public static String resolveRole(@Nullable String roleValue, @Nullable String email) {
-        if (isDefaultAdminEmail(email) || isAdminRole(roleValue)) {
-            return ROLE_ADMIN;
-        }
-        return ROLE_USERS;
     }
 
     public static boolean canAdvanceOrderStatus(
@@ -98,22 +71,6 @@ public final class AdminService {
         }
     }
 
-    public static int countOrdersByStatus(
-            @Nullable List<OrderModel> orders,
-            @NonNull OrderModel.Status status
-    ) {
-        if (orders == null || orders.isEmpty()) {
-            return 0;
-        }
-        int count = 0;
-        for (OrderModel order : orders) {
-            if (order != null && order.getStatus() == status) {
-                count++;
-            }
-        }
-        return count;
-    }
-
     public static long calculateCompletedRevenue(@Nullable List<OrderModel> orders) {
         if (orders == null || orders.isEmpty()) {
             return 0L;
@@ -134,7 +91,7 @@ public final class AdminService {
             @Nullable String category,
             long price,
             long originalPrice,
-            int stockPerVariant
+            @Nullable Integer stockPerVariant
     ) {
         if (name == null || name.trim().isEmpty()) {
             return "Vui lòng nhập tên mẫu giày";
@@ -151,10 +108,24 @@ public final class AdminService {
         if (originalPrice > 0L && originalPrice < price) {
             return "Giá gốc không được nhỏ hơn giá bán";
         }
-        if (stockPerVariant < 0) {
+        if (stockPerVariant != null && stockPerVariant < 0) {
             return "Số lượng tồn kho mỗi size không được âm";
         }
         return null;
+    }
+
+    @NonNull
+    public static List<String> computeOutOfStockSizes(
+            @NonNull List<String> sizes,
+            @NonNull Map<String, Integer> maxStockBySize
+    ) {
+        List<String> outOfStock = new ArrayList<>();
+        for (String size : sizes) {
+            if (maxStockBySize.getOrDefault(size, 0) <= 0) {
+                outOfStock.add(size);
+            }
+        }
+        return outOfStock;
     }
 
     @Nullable

@@ -30,14 +30,9 @@ public final class PaymentMapper {
     @NonNull
     public static PaymentModel fromSnapshot(@NonNull DocumentSnapshot doc) {
         return new PaymentModel(
-                FirestoreReadUtil.readString(doc, FIELD_PAYMENT_ID, doc.getId()),
                 FirestoreReadUtil.readString(doc, FIELD_ORDER_ID, ""),
-                FirestoreReadUtil.readString(doc, FIELD_USER_ID, ""),
-                PaymentModel.Method.fromStorage(FirestoreReadUtil.readString(doc, FIELD_METHOD, "COD")),
-                PaymentModel.Status.fromStorage(FirestoreReadUtil.readString(doc, FIELD_STATUS, "UNPAID")),
-                FirestoreReadUtil.readLong(doc, FIELD_AMOUNT, 0L),
+                PaymentModel.Status.fromStorage(FirestoreReadUtil.readString(doc, FIELD_STATUS, PaymentModel.Status.UNPAID.name())),
                 FirestoreReadUtil.readString(doc, FIELD_TRANSACTION_CODE, ""),
-                FirestoreReadUtil.readMillis(doc, FIELD_PAID_AT),
                 FirestoreReadUtil.readMillis(doc, FIELD_CREATED_AT)
         );
     }

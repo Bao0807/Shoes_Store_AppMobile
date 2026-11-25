@@ -15,7 +15,6 @@ public class ProductVariantModel {
     private final String imageUrl;
     private final String size;
     private final int stockQty;
-    private final String sku;
 
     public ProductVariantModel(
             @NonNull String variantId,
@@ -24,8 +23,7 @@ public class ProductVariantModel {
             @NonNull String colorHex,
             @Nullable String imageUrl,
             @NonNull String size,
-            int stockQty,
-            @NonNull String sku
+            int stockQty
     ) {
         this.variantId = variantId;
         this.productId = productId;
@@ -34,7 +32,6 @@ public class ProductVariantModel {
         this.imageUrl = imageUrl != null ? imageUrl : "";
         this.size = size;
         this.stockQty = Math.max(0, stockQty);
-        this.sku = sku;
     }
 
     @NonNull
@@ -71,16 +68,7 @@ public class ProductVariantModel {
         return stockQty;
     }
 
-    @NonNull
-    public String getSku() {
-        return sku;
-    }
-
     public boolean isInStock() {
         return stockQty > 0;
-    }
-
-    public boolean hasEnoughStock(int quantity) {
-        return quantity > 0 && stockQty >= quantity;
     }
 }

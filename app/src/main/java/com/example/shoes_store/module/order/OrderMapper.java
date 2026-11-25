@@ -51,7 +51,7 @@ public final class OrderMapper {
     }
 
     @NonNull
-    public static OrderModel fromSnapshot(@NonNull DocumentSnapshot doc) {
+    public static List<OrderItemModel> parseItemsFromSnapshot(@NonNull DocumentSnapshot doc) {
         List<OrderItemModel> orderItems = new ArrayList<>();
         Object rawItems = doc.get(FIELD_ITEMS);
         if (rawItems instanceof List<?>) {
@@ -73,6 +73,21 @@ public final class OrderMapper {
                 }
             }
         }
+        return orderItems;
+    }
+
+    public static boolean snapshotContainsProduct(@NonNull DocumentSnapshot doc, @NonNull String productId) {
+        for (OrderItemModel item : parseItemsFromSnapshot(doc)) {
+            if (productId.equals(item.getProductId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @NonNull
+    public static OrderModel fromSnapshot(@NonNull DocumentSnapshot doc) {
+        List<OrderItemModel> orderItems = parseItemsFromSnapshot(doc);
         String receiverName = FirestoreReadUtil.readString(doc, FIELD_RECEIVER_NAME, "");
         String receiverPhone = FirestoreReadUtil.readString(doc, FIELD_RECEIVER_PHONE, "");
         String receiverInfo = receiverPhone.isEmpty() ? receiverName : receiverName + " · " + receiverPhone;
@@ -81,19 +96,18 @@ public final class OrderMapper {
                 FirestoreReadUtil.readString(doc, FIELD_ORDER_ID, doc.getId()),
                 FirestoreReadUtil.readString(doc, FIELD_ORDER_CODE, doc.getId()),
                 FirestoreReadUtil.readString(doc, FIELD_USER_ID, ""),
-                OrderModel.Status.fromStorage(FirestoreReadUtil.readString(doc, FIELD_STATUS, "PENDING")),
-                PaymentModel.Method.fromStorage(FirestoreReadUtil.readString(doc, FIELD_PAYMENT_METHOD, "COD")),
+                OrderModel.Status.fromStorage(FirestoreReadUtil.readString(doc, FIELD_STATUS, OrderModel.Status.PENDING.name())),
+                PaymentModel.Method.fromStorage(FirestoreReadUtil.readString(doc, FIELD_PAYMENT_METHOD, PaymentModel.Method.COD.name())),
                 orderItems,
                 FirestoreReadUtil.readString(doc, FIELD_SHIPPING_ADDRESS, ""),
                 receiverInfo,
-                FirestoreReadUtil.readString(doc, FIELD_SHIPPING_METHOD, "Giao tiêu chuẩn"),
+                FirestoreReadUtil.readString(doc, FIELD_SHIPPING_METHOD, OrderService.SHIPPING_METHOD_STANDARD),
                 FirestoreReadUtil.readString(doc, FIELD_VOUCHER_CODE, ""),
                 FirestoreReadUtil.readLong(doc, FIELD_SUBTOTAL, 0L),
                 FirestoreReadUtil.readLong(doc, FIELD_SHIPPING_FEE, 0L),
                 FirestoreReadUtil.readLong(doc, FIELD_DISCOUNT, 0L),
                 FirestoreReadUtil.readLong(doc, FIELD_TOTAL, 0L),
-                FirestoreReadUtil.readMillis(doc, FIELD_CREATED_AT),
-                FirestoreReadUtil.readMillis(doc, FIELD_UPDATED_AT)
+                FirestoreReadUtil.readMillis(doc, FIELD_CREATED_AT)
         );
     }
 

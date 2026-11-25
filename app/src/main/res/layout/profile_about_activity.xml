@@ -53,7 +53,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Brand Hero Card (Reserved Logo Slot) -->
+            <!-- Brand Hero Card -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -62,33 +62,28 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <!-- TODO: Thay android:src của about_brand_logo bằng logo thương hiệu chính thức sau này -->
-                <FrameLayout
-                    android:layout_width="88dp"
-                    android:layout_height="88dp"
-                    android:background="@drawable/bg_stepper_box"
-                    android:backgroundTint="@color/brand_accent_soft">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/bg_surface"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="0dp"
+                    app:contentPaddingBottom="14dp"
+                    app:contentPaddingLeft="20dp"
+                    app:contentPaddingRight="20dp"
+                    app:contentPaddingTop="14dp"
+                    app:strokeColor="@color/border_subtle"
+                    app:strokeWidth="1dp">
 
                     <ImageView
                         android:id="@+id/about_brand_logo"
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
-                        android:layout_gravity="center"
-                        android:contentDescription="@string/app_name"
-                        android:src="@drawable/ic_runner"
-                        app:tint="@color/brand_accent" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="124dp"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="bottom|center_horizontal"
-                        android:layout_marginBottom="6dp"
-                        android:fontFamily="sans-serif-bold"
-                        android:letterSpacing="0.08"
-                        android:text="LOGO"
-                        android:textColor="@color/brand_accent_dark"
-                        android:textSize="9sp" />
-                </FrameLayout>
+                        android:adjustViewBounds="true"
+                        android:contentDescription="@string/app_name"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_brand_logo" />
+                </com.google.android.material.card.MaterialCardView>
 
                 <TextView
                     android:layout_width="wrap_content"

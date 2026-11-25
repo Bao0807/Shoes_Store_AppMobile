@@ -2,6 +2,7 @@ package com.example.shoes_store;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -11,38 +12,31 @@ import android.view.animation.OvershootInterpolator;
 import android.view.animation.PathInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 
-import com.example.shoes_store.core.FirebaseProviderHelper;
-import com.example.shoes_store.core.SessionSyncHelper;
-import com.example.shoes_store.core.UiInsetHelper;
+import com.example.shoes_store.core.BaseActivity;
+import com.example.shoes_store.core.UserRoleHelper;
 import com.example.shoes_store.module.admin.AdminDashboardActivity;
-import com.example.shoes_store.module.admin.AdminService;
 import com.example.shoes_store.module.auth.AuthLoginActivity;
 import com.example.shoes_store.module.cart.CartFragment;
-import com.example.shoes_store.module.cart.CartRepository;
 import com.example.shoes_store.module.home.HomeFragment;
 import com.example.shoes_store.module.notification.NotificationFragment;
-import com.example.shoes_store.module.notification.NotificationRepository;
 import com.example.shoes_store.module.profile.ProfileFragment;
-import com.example.shoes_store.module.profile.ProfileRepository;
 import com.example.shoes_store.module.wishlist.WishlistFragment;
 
 /**
  * Activity chính chứa khung điều hướng Floating Bottom Navigation với thanh trượt mượt.
  */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     public static final String EXTRA_TARGET_TAB = "extra_target_tab";
     private static final String STATE_ACTIVE_TAG = "state_active_tag";
@@ -66,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private final DecelerateInterpolator iconEaseInterpolator = new DecelerateInterpolator();
     private final ValueAnimator[] colorAnimators = new ValueAnimator[TAB_IDS.length];
 
+    private MainViewModel mainViewModel;
     private View slidingIndicator;
     private View[] tabContainers;
     private ImageView[] tabIcons;
@@ -73,23 +68,23 @@ public class MainActivity extends AppCompatActivity {
     private TextView notificationBadgeView;
     private String activeTag = TAG_HOME;
     private int activeIndex = 0;
-    private static String lastAutoRoutedAdminUid = "";
 
-    public static void markAdminAutoRouted() {
-        String uid = FirebaseProviderHelper.getInstance().getCurrentUid();
-        if (uid != null) {
-            lastAutoRoutedAdminUid = uid;
-        }
+    /**
+     * Mở MainActivity (tái sử dụng instance hiện có) và chuyển tới tab mục tiêu.
+     */
+    public static void openTab(@NonNull Context context, int targetTabId) {
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra(EXTRA_TARGET_TAB, targetTabId);
+        context.startActivity(intent);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        WindowCompat.enableEdgeToEdge(getWindow());
-        setContentView(R.layout.activity_main);
+        setEdgeToEdgeContent(R.layout.activity_main, R.id.main_fragment_container);
 
-        UiInsetHelper.applySystemBarInsets(findViewById(R.id.main_fragment_container));
-
+        mainViewModel = new ViewModelProvider(this).get(MainViewModel.class);
         setupFloatingNavBar();
 
         if (savedInstanceState != null) {
@@ -162,13 +157,34 @@ public class MainActivity extends AppCompatActivity {
         outState.putString(STATE_ACTIVE_TAG, activeTag);
     }
 
+    @Override
+    protected void onDestroy() {
+        for (int i = 0; i < colorAnimators.length; i++) {
+            if (colorAnimators[i] != null) {
+                colorAnimators[i].cancel();
+                colorAnimators[i] = null;
+            }
+        }
+        if (slidingIndicator != null) {
+            slidingIndicator.animate().cancel();
+        }
+        if (tabIcons != null) {
+            for (ImageView icon : tabIcons) {
+                if (icon != null) {
+                    icon.animate().cancel();
+                }
+            }
+        }
+        super.onDestroy();
+    }
+
     public void navigateToTab(int menuItemId) {
         selectTab(menuItemId, true);
     }
 
     private void selectTab(int menuItemId, boolean animate) {
-        if (menuItemId != R.id.nav_home && !FirebaseProviderHelper.getInstance().isSignedIn()) {
-            Toast.makeText(this, R.string.auth_login_required, Toast.LENGTH_SHORT).show();
+        if (menuItemId != R.id.nav_home && !mainViewModel.isSignedIn()) {
+            showToast(R.string.auth_login_required);
             AuthLoginActivity.openForTab(this, menuItemId);
             return;
         }
@@ -307,24 +323,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void observeBadges() {
-        CartRepository.getInstance().getCartTotalCountLiveData()
+        mainViewModel.getCartTotalCountLiveData()
                 .observe(this, count -> updateBadgeView(cartBadgeView, count));
-        NotificationRepository.getInstance().getUnreadNotificationCountLiveData()
+        mainViewModel.getUnreadNotificationCountLiveData()
                 .observe(this, unread -> updateBadgeView(notificationBadgeView, unread));
-        SessionSyncHelper.getInstance().getSignedInLiveData().observe(this, signedIn -> {
-            if (Boolean.FALSE.equals(signedIn)) {
-                lastAutoRoutedAdminUid = "";
-                if (!TAG_HOME.equals(activeTag)) {
-                    selectTab(R.id.nav_home, false);
-                }
+        mainViewModel.getSignedInLiveData().observe(this, signedIn -> {
+            if (Boolean.FALSE.equals(signedIn) && !TAG_HOME.equals(activeTag)) {
+                selectTab(R.id.nav_home, false);
             }
         });
-        ProfileRepository.getInstance().getProfileLiveData().observe(this, profile -> {
+        mainViewModel.getProfileLiveData().observe(this, profile -> {
             if (profile != null
-                    && AdminService.isAdminRole(profile.getRole())
-                    && !profile.getUid().isEmpty()
-                    && !profile.getUid().equals(lastAutoRoutedAdminUid)) {
-                lastAutoRoutedAdminUid = profile.getUid();
+                    && UserRoleHelper.isAdminRole(profile.getRole())
+                    && mainViewModel.tryMarkAdminAutoRouted(profile.getUid())) {
                 startActivity(new Intent(this, AdminDashboardActivity.class));
             }
         });

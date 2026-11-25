@@ -4,9 +4,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.CategoryStyleHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,6 +19,8 @@ import java.util.Set;
  * Model sản phẩm giày chạy bộ kèm thông số chuyên biệt và danh sách biến thể màu/size.
  */
 public class ProductModel {
+
+    public static final String DEFAULT_EU_SIZE_RANGE = "EU 38 - 44";
 
     private final String id;
     private final String name;
@@ -38,7 +42,6 @@ public class ProductModel {
     private final List<String> colorHexes;
     private final List<String> allSizes;
     private final Set<String> outOfStockSizes;
-    private final List<ProductReviewModel> reviews;
     private final boolean active;
     private final long createdAtMillis;
     private final List<ProductVariantModel> variants = new ArrayList<>();
@@ -64,14 +67,13 @@ public class ProductModel {
             List<String> colorHexes,
             List<String> allSizes,
             Set<String> outOfStockSizes,
-            List<ProductReviewModel> reviews,
             boolean active,
             long createdAtMillis
     ) {
         this.id = id != null ? id : "";
         this.name = name != null ? name : "";
         this.brand = brand != null ? brand : "";
-        this.category = category != null ? category : "Daily";
+        this.category = category != null ? category : CategoryStyleHelper.CAT_DAILY;
         this.price = price;
         this.originalPrice = originalPrice;
         this.rating = rating;
@@ -88,7 +90,6 @@ public class ProductModel {
         this.colorHexes = colorHexes != null ? colorHexes : new ArrayList<>();
         this.allSizes = allSizes != null ? allSizes : new ArrayList<>();
         this.outOfStockSizes = outOfStockSizes != null ? outOfStockSizes : new LinkedHashSet<>();
-        this.reviews = reviews != null ? reviews : new ArrayList<>();
         this.active = active;
         this.createdAtMillis = createdAtMillis;
     }
@@ -186,10 +187,6 @@ public class ProductModel {
         return outOfStockSizes;
     }
 
-    public List<ProductReviewModel> getReviews() {
-        return reviews;
-    }
-
     public boolean isActive() {
         return active;
     }
@@ -217,7 +214,7 @@ public class ProductModel {
             for (int i = 0; i < colorNames.size(); i++) {
                 String cName = colorNames.get(i);
                 String cHex = i < colorHexes.size() ? colorHexes.get(i) : "#111827";
-                fallback.add(new ProductVariantModel("", id, cName, cHex, thumbnailUrl, "", 1, ""));
+                fallback.add(new ProductVariantModel("", id, cName, cHex, thumbnailUrl, "", 1));
             }
             return fallback;
         }
@@ -275,24 +272,30 @@ public class ProductModel {
         return null;
     }
 
-    @Nullable
-    public ProductVariantModel findFirstAvailableVariant(@Nullable String preferredSize) {
-        if (variants.isEmpty()) {
-            return null;
-        }
-        if (preferredSize != null && !preferredSize.isEmpty()) {
+    @NonNull
+    public String getEuSizeRange() {
+        List<String> sizes;
+        if (!variants.isEmpty()) {
+            Set<String> distinct = new LinkedHashSet<>();
             for (ProductVariantModel v : variants) {
-                if (preferredSize.equalsIgnoreCase(v.getSize()) && v.isInStock()) {
-                    return v;
+                if (!v.getSize().trim().isEmpty()) {
+                    distinct.add(v.getSize().trim());
                 }
             }
+            sizes = new ArrayList<>(distinct);
+            Collections.sort(sizes, Comparator.comparingDouble(s -> {
+                try {
+                    return Double.parseDouble(s);
+                } catch (NumberFormatException e) {
+                    return 0.0;
+                }
+            }));
+        } else {
+            sizes = allSizes;
         }
-        for (ProductVariantModel v : variants) {
-            if (v.isInStock()) {
-                return v;
-            }
-        }
-        return variants.get(0);
+        return (sizes != null && !sizes.isEmpty())
+                ? "EU " + sizes.get(0) + " - " + sizes.get(sizes.size() - 1)
+                : DEFAULT_EU_SIZE_RANGE;
     }
 
     @NonNull
@@ -318,7 +321,6 @@ public class ProductModel {
                 colorHexes,
                 allSizes,
                 outOfStockSizes,
-                reviews,
                 active,
                 createdAtMillis
         );

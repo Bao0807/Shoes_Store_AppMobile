@@ -655,4 +655,27 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
+    <LinearLayout
+        android:id="@+id/od_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_screen"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider_light" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/od_action_btn"
+            style="@style/Widget.ShoesStore.Button.Accent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginVertical="12dp"
+            android:text="Mua lại" />
+    </LinearLayout>
+
 </LinearLayout>

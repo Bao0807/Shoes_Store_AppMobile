@@ -3,9 +3,7 @@ package com.example.shoes_store.module.notification;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import com.example.shoes_store.core.DateFormatUtil;
 
 /**
  * Model thông báo đơn hàng, ưu đãi và giày mới ra mắt.
@@ -32,29 +30,16 @@ public class NotificationModel {
     }
 
     private final String id;
-    private final String userId;
     private final String title;
     private final String message;
     private final String timeAgo;
     private final Type type;
     private final String targetId;
     private final long createdAtMillis;
-    private boolean unread;
-
-    public NotificationModel(
-            String id,
-            String title,
-            String message,
-            String timeAgo,
-            Type type,
-            boolean unread
-    ) {
-        this(id, "", title, message, timeAgo, type, "", 0L, unread);
-    }
+    private final boolean unread;
 
     public NotificationModel(
             @Nullable String id,
-            @Nullable String userId,
             @Nullable String title,
             @Nullable String message,
             @Nullable String timeAgo,
@@ -64,7 +49,6 @@ public class NotificationModel {
             boolean unread
     ) {
         this.id = id != null ? id : "";
-        this.userId = userId != null ? userId : "";
         this.title = title != null ? title : "";
         this.message = message != null ? message : "";
         this.type = type;
@@ -99,16 +83,11 @@ public class NotificationModel {
         if (days < 7L) {
             return days + " ngày trước";
         }
-        return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date(timestampMillis));
+        return DateFormatUtil.formatDate(timestampMillis);
     }
 
     public String getId() {
         return id;
-    }
-
-    @NonNull
-    public String getUserId() {
-        return userId;
     }
 
     public String getTitle() {
@@ -138,9 +117,5 @@ public class NotificationModel {
 
     public boolean isUnread() {
         return unread;
-    }
-
-    public void setUnread(boolean unread) {
-        this.unread = unread;
     }
 }

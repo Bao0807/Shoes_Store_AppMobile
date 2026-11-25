@@ -26,23 +26,6 @@
         <item name="cornerSize">12dp</item>
     </style>
 
-    <style name="ShapeAppearance.ShoesStore.Rounded16" parent="">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">16dp</item>
-    </style>
-
-    <style name="Widget.ShoesStore.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
-        <item name="android:color">@color/brand_accent_soft</item>
-        <item name="android:width">44dp</item>
-        <item name="android:height">44dp</item>
-        <item name="shapeAppearance">@style/ShapeAppearance.ShoesStore.Circle</item>
-    </style>
-
-    <style name="TextAppearance.ShoesStore.BottomNavLabel" parent="TextAppearance.Material3.LabelSmall">
-        <item name="android:textSize">10.5sp</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
-    </style>
-
     <style name="Widget.ShoesStore.Chip.Category" parent="Widget.Material3.Chip.Filter">
         <item name="checkedIconVisible">false</item>
         <item name="chipCornerRadius">999dp</item>

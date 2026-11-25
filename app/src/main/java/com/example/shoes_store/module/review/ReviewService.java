@@ -1,4 +1,4 @@
-package com.example.shoes_store.module.product;
+package com.example.shoes_store.module.review;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -6,19 +6,25 @@ import androidx.annotation.Nullable;
 import com.example.shoes_store.module.order.OrderItemModel;
 import com.example.shoes_store.module.order.OrderModel;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
  * Nghiệp vụ thuần Java cho đánh giá sản phẩm: xác thực điều kiện người mua thực (đơn COMPLETED),
- * kiểm tra đầu vào đánh giá và tính điểm trung bình sao.
+ * sinh ID đánh giá gắn theo đơn hàng để mỗi lần mua lại tạo đánh giá riêng, kiểm tra đầu vào và tính điểm trung bình.
  */
-public final class ProductReviewService {
+public final class ReviewService {
 
     public static final String LEGACY_SEED_USER_ID = "seed_runner";
 
-    private ProductReviewService() {
+    private ReviewService() {
+    }
+
+    @NonNull
+    public static String buildReviewDocumentId(@NonNull String orderId, @NonNull String uid) {
+        return orderId.trim() + "_" + uid.trim();
     }
 
     public static double calculateAverageRating(@Nullable List<Double> ratings) {
@@ -34,7 +40,20 @@ public final class ProductReviewService {
         return Math.round((sum / ratings.size()) * 10.0) / 10.0;
     }
 
-    public static boolean isVerifiedRealReview(@Nullable ProductReviewModel review) {
+    public static double calculateAverageRatingFromReviews(@Nullable List<ReviewModel> reviews) {
+        if (reviews == null || reviews.isEmpty()) {
+            return 0.0;
+        }
+        List<Double> ratings = new ArrayList<>();
+        for (ReviewModel rev : reviews) {
+            if (rev != null) {
+                ratings.add((double) rev.getRating());
+            }
+        }
+        return calculateAverageRating(ratings);
+    }
+
+    public static boolean isVerifiedRealReview(@Nullable ReviewModel review) {
         if (review == null) {
             return false;
         }
@@ -72,14 +91,14 @@ public final class ProductReviewService {
             @Nullable String uid,
             @NonNull String productId,
             @Nullable List<OrderModel> orders,
-            @Nullable List<ProductReviewModel> existingReviews
+            @Nullable List<ReviewModel> existingReviews
     ) {
         if (uid == null || uid.trim().isEmpty() || productId.trim().isEmpty() || orders == null) {
             return null;
         }
         Set<String> reviewedOrderIds = new HashSet<>();
         if (existingReviews != null) {
-            for (ProductReviewModel rev : existingReviews) {
+            for (ReviewModel rev : existingReviews) {
                 if (isVerifiedRealReview(rev) && uid.equals(rev.getUserId())) {
                     reviewedOrderIds.add(rev.getOrderId());
                 }
@@ -106,12 +125,12 @@ public final class ProductReviewService {
 
     public static boolean hasUserReviewedProduct(
             @Nullable String uid,
-            @Nullable List<ProductReviewModel> existingReviews
+            @Nullable List<ReviewModel> existingReviews
     ) {
         if (uid == null || uid.trim().isEmpty() || existingReviews == null) {
             return false;
         }
-        for (ProductReviewModel rev : existingReviews) {
+        for (ReviewModel rev : existingReviews) {
             if (isVerifiedRealReview(rev) && uid.equals(rev.getUserId())) {
                 return true;
             }

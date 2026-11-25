@@ -1,5 +1,7 @@
 package com.example.shoes_store.module.home;
 
+import com.example.shoes_store.core.CategoryStyleHelper;
+
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -11,7 +13,7 @@ import java.util.Set;
  */
 public class HomeFilterState {
 
-    public static final String ALL = "Tất cả";
+    public static final String ALL = CategoryStyleHelper.CAT_ALL;
     public static final long DEFAULT_MIN_PRICE = 1_000_000L;
     public static final long DEFAULT_MAX_PRICE = 8_000_000L;
 

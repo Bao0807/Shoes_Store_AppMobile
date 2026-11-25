@@ -24,14 +24,12 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AvatarImageHelper;
-import com.example.shoes_store.core.FirebaseProviderHelper;
+import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.module.auth.AuthLoginActivity;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.example.shoes_store.module.product.ProductModel;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.imageview.ShapeableImageView;
-
-import java.util.List;
 
 /**
  * Tab 1 - Trang chủ shop giày chạy bộ.
@@ -94,7 +92,7 @@ public class HomeFragment extends Fragment {
         emptyStateView = view.findViewById(R.id.home_empty_state);
 
         avatarView.setOnClickListener(v -> {
-            if (!FirebaseProviderHelper.getInstance().isSignedIn()) {
+            if (!viewModel.isSignedIn()) {
                 Toast.makeText(requireContext(), R.string.auth_login_required, Toast.LENGTH_SHORT).show();
                 AuthLoginActivity.openForTab(requireContext(), R.id.nav_profile);
                 return;
@@ -150,11 +148,11 @@ public class HomeFragment extends Fragment {
 
     private void setupCategoryChips() {
         chipCatAll.setOnClickListener(v -> viewModel.clearCategories());
-        chipCatDaily.setOnClickListener(v -> viewModel.toggleCategory("Daily"));
-        chipCatRace.setOnClickListener(v -> viewModel.toggleCategory("Race"));
-        chipCatTempo.setOnClickListener(v -> viewModel.toggleCategory("Tempo"));
-        chipCatTrail.setOnClickListener(v -> viewModel.toggleCategory("Trail"));
-        chipCatRecovery.setOnClickListener(v -> viewModel.toggleCategory("Recovery"));
+        chipCatDaily.setOnClickListener(v -> viewModel.toggleCategory(CategoryStyleHelper.CAT_DAILY));
+        chipCatRace.setOnClickListener(v -> viewModel.toggleCategory(CategoryStyleHelper.CAT_RACE));
+        chipCatTempo.setOnClickListener(v -> viewModel.toggleCategory(CategoryStyleHelper.CAT_TEMPO));
+        chipCatTrail.setOnClickListener(v -> viewModel.toggleCategory(CategoryStyleHelper.CAT_TRAIL));
+        chipCatRecovery.setOnClickListener(v -> viewModel.toggleCategory(CategoryStyleHelper.CAT_RECOVERY));
     }
 
     private void setupShoesGrid() {
@@ -168,7 +166,7 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onFavoriteToggle(ProductModel product) {
-                if (!FirebaseProviderHelper.getInstance().isSignedIn()) {
+                if (!viewModel.isSignedIn()) {
                     Toast.makeText(requireContext(), R.string.auth_login_required, Toast.LENGTH_SHORT).show();
                     AuthLoginActivity.open(requireContext());
                     return;
@@ -184,14 +182,14 @@ public class HomeFragment extends Fragment {
 
     private void observeData(ShapeableImageView avatarView) {
         viewModel.getBannersLiveData().observe(getViewLifecycleOwner(), banners -> {
-            bannerAdapter.submitBanners(banners);
+            bannerAdapter.submitList(banners);
             int count = banners != null ? banners.size() : 0;
             updateBannerDots(count, Math.min(bannerPager.getCurrentItem(), Math.max(0, count - 1)));
         });
 
         viewModel.getProfileLiveData().observe(getViewLifecycleOwner(), profile -> {
             if (profile != null) {
-                AvatarImageHelper.bindAvatar(avatarView, profile);
+                AvatarImageHelper.bindAvatar(avatarView, profile.getAvatarUri(), profile.getAvatarResId());
             } else {
                 avatarView.setImageResource(R.drawable.img_avatar_runner);
             }
@@ -201,7 +199,7 @@ public class HomeFragment extends Fragment {
                 shoeAdapter.setFavoriteIds(ids));
 
         viewModel.getDisplayedProductsLiveData().observe(getViewLifecycleOwner(), products -> {
-            shoeAdapter.submitProducts(products);
+            shoeAdapter.submitList(products);
             int count = products != null ? products.size() : 0;
             productCountView.setText(count + " sản phẩm");
             emptyStateView.setVisibility(count == 0 ? View.VISIBLE : View.GONE);
@@ -226,11 +224,11 @@ public class HomeFragment extends Fragment {
     private void syncCategoryChips(HomeFilterState state) {
         boolean allSelected = state.isAllCategoriesSelected();
         setChipChecked(chipCatAll, allSelected);
-        setChipChecked(chipCatDaily, !allSelected && state.isCategorySelected("Daily"));
-        setChipChecked(chipCatRace, !allSelected && state.isCategorySelected("Race"));
-        setChipChecked(chipCatTempo, !allSelected && state.isCategorySelected("Tempo"));
-        setChipChecked(chipCatTrail, !allSelected && state.isCategorySelected("Trail"));
-        setChipChecked(chipCatRecovery, !allSelected && state.isCategorySelected("Recovery"));
+        setChipChecked(chipCatDaily, !allSelected && state.isCategorySelected(CategoryStyleHelper.CAT_DAILY));
+        setChipChecked(chipCatRace, !allSelected && state.isCategorySelected(CategoryStyleHelper.CAT_RACE));
+        setChipChecked(chipCatTempo, !allSelected && state.isCategorySelected(CategoryStyleHelper.CAT_TEMPO));
+        setChipChecked(chipCatTrail, !allSelected && state.isCategorySelected(CategoryStyleHelper.CAT_TRAIL));
+        setChipChecked(chipCatRecovery, !allSelected && state.isCategorySelected(CategoryStyleHelper.CAT_RECOVERY));
     }
 
     private void setChipChecked(Chip chip, boolean checked) {

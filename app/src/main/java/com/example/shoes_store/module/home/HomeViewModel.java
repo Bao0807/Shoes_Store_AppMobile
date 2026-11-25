@@ -6,8 +6,12 @@ import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.module.product.ProductModel;
+import com.example.shoes_store.module.product.ProductRepository;
 import com.example.shoes_store.module.profile.ProfileModel;
+import com.example.shoes_store.module.profile.ProfileRepository;
+import com.example.shoes_store.module.wishlist.WishlistRepository;
 
 import java.util.List;
 import java.util.Set;
@@ -18,11 +22,15 @@ import java.util.Set;
 public class HomeViewModel extends ViewModel {
 
     private final HomeRepository repository = HomeRepository.getInstance();
+    private final ProductRepository productRepository = ProductRepository.getInstance();
+    private final WishlistRepository wishlistRepository = WishlistRepository.getInstance();
+    private final ProfileRepository profileRepository = ProfileRepository.getInstance();
+    private final FirebaseProviderHelper firebaseProvider = FirebaseProviderHelper.getInstance();
     private final MutableLiveData<HomeFilterState> filterStateLiveData = new MutableLiveData<>(new HomeFilterState());
     private final MediatorLiveData<List<ProductModel>> displayedProductsLiveData = new MediatorLiveData<>();
 
     public HomeViewModel() {
-        displayedProductsLiveData.addSource(repository.getProductsLiveData(), products -> applyCurrentFilter());
+        displayedProductsLiveData.addSource(productRepository.getProductsLiveData(), products -> applyCurrentFilter());
         applyCurrentFilter();
     }
 
@@ -39,11 +47,11 @@ public class HomeViewModel extends ViewModel {
     }
 
     public LiveData<Set<String>> getFavoriteIdsLiveData() {
-        return repository.getFavoriteIdsLiveData();
+        return wishlistRepository.getFavoriteIdsLiveData();
     }
 
     public LiveData<ProfileModel> getProfileLiveData() {
-        return repository.getProfileLiveData();
+        return profileRepository.getProfileLiveData();
     }
 
     public LiveData<List<String>> getRecentSearchesLiveData() {
@@ -103,7 +111,7 @@ public class HomeViewModel extends ViewModel {
     }
 
     public boolean toggleFavorite(@NonNull String productId) {
-        return repository.toggleFavorite(productId);
+        return wishlistRepository.toggleFavorite(productId);
     }
 
     public void addRecentSearch(@NonNull String query) {
@@ -112,6 +120,24 @@ public class HomeViewModel extends ViewModel {
 
     public void removeRecentSearch(@NonNull String query) {
         repository.removeRecentSearch(query);
+    }
+
+    public boolean isSignedIn() {
+        return firebaseProvider.isSignedIn();
+    }
+
+    @NonNull
+    public List<String> getAvailableCategories() {
+        return repository.getAvailableCategories();
+    }
+
+    @NonNull
+    public List<String> getAvailableBrands() {
+        return repository.getAvailableBrands();
+    }
+
+    public int countMatchingProducts(@NonNull HomeFilterState state) {
+        return repository.filterAndSort(state).size();
     }
 
     private void applyCurrentFilter() {

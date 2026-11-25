@@ -67,41 +67,21 @@ public class PaymentModel {
         }
     }
 
-    private final String paymentId;
     private final String orderId;
-    private final String userId;
-    private final Method method;
     private final Status status;
-    private final long amount;
     private final String transactionCode;
-    private final long paidAtMillis;
     private final long createdAtMillis;
 
     public PaymentModel(
-            @NonNull String paymentId,
             @NonNull String orderId,
-            @NonNull String userId,
-            @NonNull Method method,
             @NonNull Status status,
-            long amount,
             @Nullable String transactionCode,
-            long paidAtMillis,
             long createdAtMillis
     ) {
-        this.paymentId = paymentId;
         this.orderId = orderId;
-        this.userId = userId;
-        this.method = method;
         this.status = status;
-        this.amount = amount;
         this.transactionCode = transactionCode != null ? transactionCode : "";
-        this.paidAtMillis = paidAtMillis;
         this.createdAtMillis = createdAtMillis;
-    }
-
-    @NonNull
-    public String getPaymentId() {
-        return paymentId;
     }
 
     @NonNull
@@ -110,22 +90,8 @@ public class PaymentModel {
     }
 
     @NonNull
-    public String getUserId() {
-        return userId;
-    }
-
-    @NonNull
-    public Method getMethod() {
-        return method;
-    }
-
-    @NonNull
     public Status getStatus() {
         return status;
-    }
-
-    public long getAmount() {
-        return amount;
     }
 
     @NonNull
@@ -133,15 +99,7 @@ public class PaymentModel {
         return transactionCode;
     }
 
-    public long getPaidAtMillis() {
-        return paidAtMillis;
-    }
-
     public long getCreatedAtMillis() {
         return createdAtMillis;
-    }
-
-    public boolean isPaid() {
-        return status == Status.PAID;
     }
 }

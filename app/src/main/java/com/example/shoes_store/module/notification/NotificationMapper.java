@@ -27,10 +27,9 @@ public final class NotificationMapper {
     }
 
     @NonNull
-    public static NotificationModel fromSnapshot(@NonNull DocumentSnapshot doc, @NonNull String uid) {
+    public static NotificationModel fromSnapshot(@NonNull DocumentSnapshot doc) {
         return new NotificationModel(
                 FirestoreReadUtil.readString(doc, FIELD_NOTIFICATION_ID, doc.getId()),
-                FirestoreReadUtil.readString(doc, FIELD_USER_ID, uid),
                 FirestoreReadUtil.readString(doc, FIELD_TITLE, ""),
                 FirestoreReadUtil.readString(doc, FIELD_MESSAGE, ""),
                 null,

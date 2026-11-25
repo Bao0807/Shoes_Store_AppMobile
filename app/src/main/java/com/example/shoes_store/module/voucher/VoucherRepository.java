@@ -7,27 +7,23 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.shoes_store.core.BaseFirestoreRepository;
 import com.example.shoes_store.core.FirebaseProviderHelper;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
 /**
  * Repository sở hữu đồng bộ realtime danh sách Voucher công khai từ collection `vouchers`.
  */
-public class VoucherRepository {
+public class VoucherRepository extends BaseFirestoreRepository {
 
     private static final String TAG = "VoucherRepository";
+    private static final String LISTENER_VOUCHERS = "vouchers";
     private static volatile VoucherRepository instance;
 
-    private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
     private final MutableLiveData<List<VoucherModel>> vouchersLiveData = new MutableLiveData<>(new ArrayList<>());
-    @Nullable
-    private ListenerRegistration vouchersRegistration;
 
     private VoucherRepository() {
     }
@@ -43,35 +39,30 @@ public class VoucherRepository {
         return instance;
     }
 
+    @Override
+    public void onAppInit() {
+        startPublicListening();
+    }
+
     // ===== 1. REALTIME =====
 
     public void startPublicListening() {
-        if (vouchersRegistration != null) {
-            vouchersRegistration.remove();
-        }
-        vouchersRegistration = provider.getFirestore()
-                .collection(FirebaseProviderHelper.COL_VOUCHERS)
-                .addSnapshotListener((snap, error) -> {
-                    if (error != null) {
-                        Log.w(TAG, "Vouchers listener error: " + error.getMessage());
-                    }
-                    if (snap == null) {
-                        return;
-                    }
-                    List<VoucherModel> list = new ArrayList<>();
-                    for (DocumentSnapshot doc : snap.getDocuments()) {
-                        VoucherModel voucher = VoucherMapper.fromSnapshot(doc);
-                        if (voucher.isActive()) {
-                            list.add(voucher);
-                        }
-                    }
-                    Collections.sort(list, Comparator.comparingLong(VoucherModel::getMinOrderAmount));
-                    vouchersLiveData.setValue(list);
-                });
+        replacePublicListener(LISTENER_VOUCHERS, listenCollection(
+                collection(FirebaseProviderHelper.COL_VOUCHERS),
+                TAG,
+                doc -> {
+                    VoucherModel voucher = VoucherMapper.fromSnapshot(doc);
+                    return voucher.isActive() ? voucher : null;
+                },
+                Comparator.comparingLong(VoucherModel::getMinOrderAmount),
+                vouchersLiveData::setValue
+        ));
     }
 
     public void refreshPublicCatalog() {
-        provider.getFirestore().collection(FirebaseProviderHelper.COL_VOUCHERS).get();
+        collection(FirebaseProviderHelper.COL_VOUCHERS)
+                .get()
+                .addOnFailureListener(e -> Log.w(TAG, "Refresh vouchers failed: " + e.getMessage()));
     }
 
     // ===== 2. ĐỌC =====
@@ -88,14 +79,6 @@ public class VoucherRepository {
 
     @Nullable
     public VoucherModel findByCode(@Nullable String code) {
-        if (code == null || code.trim().isEmpty()) {
-            return null;
-        }
-        for (VoucherModel voucher : getVouchers()) {
-            if (voucher.getCode().equalsIgnoreCase(code.trim())) {
-                return voucher;
-            }
-        }
-        return null;
+        return VoucherService.findByCode(getVouchers(), code);
     }
 }

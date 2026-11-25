@@ -162,46 +162,31 @@ public class CartFragment extends Fragment {
     }
 
     private void refreshSummary() {
-        int totalQtyAll = 0;
-        int selectedQty = 0;
-        long selectedSubtotal = 0L;
-        boolean allSelected = latestItems != null && !latestItems.isEmpty();
+        CartService.CartSummary summary = CartService.summarize(latestItems);
 
-        if (latestItems != null) {
-            for (CartItemModel item : latestItems) {
-                totalQtyAll += item.getQuantity();
-                if (item.isSelected()) {
-                    selectedQty += item.getQuantity();
-                    selectedSubtotal += item.getLineTotal();
-                } else {
-                    allSelected = false;
-                }
-            }
-        }
-
-        headerTitle.setText("Giỏ hàng (" + totalQtyAll + ")");
-        boolean isEmpty = latestItems == null || latestItems.isEmpty();
+        headerTitle.setText("Giỏ hàng (" + summary.getTotalQuantity() + ")");
+        boolean isEmpty = summary.isEmpty();
         contentContainer.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
         emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
 
-        long discount = viewModel.calculateEffectiveDiscount(selectedSubtotal);
+        long discount = viewModel.calculateEffectiveDiscount(summary.getSelectedSubtotal());
         VoucherModel activeVoucher = viewModel.getSelectedVoucher();
         if (activeVoucher != null && discount > 0) {
-            voucherTitle.setText("Mã " + activeVoucher.getCode());
-            voucherSubtitle.setText("Đã giảm " + CurrencyFormatUtil.formatVnd(discount));
-            voucherAction.setText("Đổi mã");
+            voucherTitle.setText(getString(R.string.voucher_applied_title, activeVoucher.getCode()));
+            voucherSubtitle.setText(getString(R.string.voucher_applied_subtitle, CurrencyFormatUtil.formatVnd(discount)));
+            voucherAction.setText(R.string.voucher_action_change);
         } else {
-            voucherTitle.setText("Voucher của cửa hàng");
-            voucherSubtitle.setText("Bấm để chọn hoặc nhập mã giảm giá");
-            voucherAction.setText("Chọn mã");
+            voucherTitle.setText(R.string.voucher_default_title);
+            voucherSubtitle.setText(R.string.voucher_default_subtitle);
+            voucherAction.setText(R.string.voucher_action_pick);
         }
 
-        long finalTotal = Math.max(0L, selectedSubtotal - discount);
+        long finalTotal = CartService.calculateFinalTotal(summary.getSelectedSubtotal(), discount);
         totalPriceText.setText(CurrencyFormatUtil.formatVnd(finalTotal));
-        checkoutBtn.setText("Mua hàng (" + selectedQty + ")");
+        checkoutBtn.setText("Mua hàng (" + summary.getSelectedQuantity() + ")");
 
         selectAllCb.setOnCheckedChangeListener(null);
-        selectAllCb.setChecked(allSelected);
+        selectAllCb.setChecked(summary.isAllSelected());
         selectAllCb.setOnCheckedChangeListener((buttonView, isChecked) ->
                 viewModel.selectAll(latestItems, isChecked, toastErrorCallback()));
     }

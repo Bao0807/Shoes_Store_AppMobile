@@ -3,15 +3,14 @@ package com.example.shoes_store.module.admin;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.DialogHelper;
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.voucher.VoucherModel;
 
@@ -55,70 +54,57 @@ public final class AdminVoucherDialog {
             daysInput.setText("30");
         }
 
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle(existing == null ? "Tạo mã Voucher mới" : "Cập nhật Voucher " + existing.getCode())
-                .setView(view)
-                .setNegativeButton("Hủy", null)
-                .setPositiveButton("Lưu Voucher", null)
-                .create();
+        DialogHelper.showFormDialog(
+                context,
+                existing == null ? "Tạo mã Voucher mới" : "Cập nhật Voucher " + existing.getCode(),
+                view,
+                "Hủy",
+                "Lưu Voucher",
+                (dialog, saveBtn) -> {
+                    String code = DialogHelper.textOf(codeInput);
+                    String badge = DialogHelper.textOf(badgeInput);
+                    String title = DialogHelper.textOf(titleInput);
+                    String desc = DialogHelper.textOf(descInput);
+                    long discount = DialogHelper.parseLong(DialogHelper.textOf(discountInput), 0L);
+                    long minOrder = DialogHelper.parseLong(DialogHelper.textOf(minOrderInput), 0L);
+                    int limit = (int) DialogHelper.parseLong(DialogHelper.textOf(limitInput), 50L);
+                    int validDays = (int) DialogHelper.parseLong(DialogHelper.textOf(daysInput), 30L);
+                    boolean active = existing == null || existing.isActive();
 
-        dialog.setOnShowListener(d -> {
-            Button saveBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-            saveBtn.setOnClickListener(v -> {
-                String code = textOf(codeInput);
-                String badge = textOf(badgeInput);
-                String title = textOf(titleInput);
-                String desc = textOf(descInput);
-                long discount = parseLong(textOf(discountInput), 0L);
-                long minOrder = parseLong(textOf(minOrderInput), 0L);
-                int limit = (int) parseLong(textOf(limitInput), 50L);
-                int validDays = (int) parseLong(textOf(daysInput), 30L);
-                boolean active = existing == null || existing.isActive();
+                    saveBtn.setEnabled(false);
+                    viewModel.saveVoucher(
+                            code,
+                            badge,
+                            title,
+                            desc,
+                            discount,
+                            minOrder,
+                            limit,
+                            validDays,
+                            active,
+                            new ResourceCallback<Void>() {
+                                @Override
+                                public void onSuccess(Void data) {
+                                    if (!DialogHelper.isHostAlive(context)) {
+                                        return;
+                                    }
+                                    Toast.makeText(context, "Đã lưu mã ưu đãi " + code.toUpperCase(), Toast.LENGTH_SHORT).show();
+                                    if (dialog.isShowing()) {
+                                        dialog.dismiss();
+                                    }
+                                }
 
-                saveBtn.setEnabled(false);
-                viewModel.saveVoucher(
-                        code,
-                        badge,
-                        title,
-                        desc,
-                        discount,
-                        minOrder,
-                        limit,
-                        validDays,
-                        active,
-                        new ResourceCallback<Void>() {
-                            @Override
-                            public void onSuccess(Void data) {
-                                Toast.makeText(context, "Đã lưu mã ưu đãi " + code.toUpperCase(), Toast.LENGTH_SHORT).show();
-                                dialog.dismiss();
+                                @Override
+                                public void onError(String message) {
+                                    if (!DialogHelper.isHostAlive(context)) {
+                                        return;
+                                    }
+                                    saveBtn.setEnabled(true);
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                                }
                             }
-
-                            @Override
-                            public void onError(String message) {
-                                saveBtn.setEnabled(true);
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                );
-            });
-        });
-
-        dialog.show();
-    }
-
-    @NonNull
-    private static String textOf(@NonNull EditText editText) {
-        return editText.getText() != null ? editText.getText().toString().trim() : "";
-    }
-
-    private static long parseLong(@NonNull String raw, long fallback) {
-        if (raw.isEmpty()) {
-            return fallback;
-        }
-        try {
-            return Long.parseLong(raw.replaceAll("[^0-9-]", ""));
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
+                    );
+                }
+        );
     }
 }

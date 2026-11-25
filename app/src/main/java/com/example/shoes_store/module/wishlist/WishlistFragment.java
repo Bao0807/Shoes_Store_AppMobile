@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.example.shoes_store.module.product.ProductModel;
@@ -102,17 +103,17 @@ public class WishlistFragment extends Fragment {
             }
             int id = checkedIds.get(0);
             if (id == R.id.wl_chip_daily) {
-                viewModel.setSelectedCategory("Daily");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_DAILY);
             } else if (id == R.id.wl_chip_race) {
-                viewModel.setSelectedCategory("Race");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_RACE);
             } else if (id == R.id.wl_chip_tempo) {
-                viewModel.setSelectedCategory("Tempo");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_TEMPO);
             } else if (id == R.id.wl_chip_trail) {
-                viewModel.setSelectedCategory("Trail");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_TRAIL);
             } else if (id == R.id.wl_chip_recovery) {
-                viewModel.setSelectedCategory("Recovery");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_RECOVERY);
             } else {
-                viewModel.setSelectedCategory("Tất cả");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_ALL);
             }
             renderFavorites();
         });

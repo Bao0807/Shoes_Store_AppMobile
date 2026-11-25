@@ -7,18 +7,13 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.example.shoes_store.module.cart.CartRepository;
-import com.example.shoes_store.module.home.HomeRepository;
-import com.example.shoes_store.module.notification.NotificationRepository;
-import com.example.shoes_store.module.order.OrderRepository;
-import com.example.shoes_store.module.product.ProductRepository;
-import com.example.shoes_store.module.profile.ProfileRepository;
-import com.example.shoes_store.module.voucher.VoucherRepository;
-import com.example.shoes_store.module.wishlist.WishlistRepository;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Điều phối vòng đời đồng bộ Cloud Firestore khi mở app và khi đăng nhập/đăng xuất.
+ * Điều phối vòng đời đồng bộ Cloud Firestore khi mở app và khi đăng nhập/đăng xuất qua {@link SessionSyncCallback}.
  */
 public final class SessionSyncHelper {
 
@@ -26,9 +21,11 @@ public final class SessionSyncHelper {
 
     private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
     private final MutableLiveData<Boolean> signedInLiveData = new MutableLiveData<>(false);
+    private final List<SessionSyncCallback> callbacks = new ArrayList<>();
     private boolean initialized = false;
     @Nullable
     private String activeUid;
+    private String lastAutoRoutedAdminUid = "";
 
     private SessionSyncHelper() {
     }
@@ -44,31 +41,38 @@ public final class SessionSyncHelper {
         return instance;
     }
 
+    public synchronized void register(@NonNull SessionSyncCallback callback) {
+        if (!callbacks.contains(callback)) {
+            callbacks.add(callback);
+        }
+    }
+
     public synchronized void init(@NonNull Context context) {
         if (initialized) {
             return;
         }
         initialized = true;
-        AppPrefsHelper.init(context);
 
-        HomeRepository.getInstance().initLocalSearches();
-        HomeRepository.getInstance().startPublicListening();
-        ProductRepository.getInstance().startPublicListening();
-        VoucherRepository.getInstance().startPublicListening();
+        for (SessionSyncCallback callback : callbacks) {
+            callback.onAppInit();
+        }
 
         provider.getAuth().addAuthStateListener(firebaseAuth -> {
             FirebaseUser user = firebaseAuth.getCurrentUser();
             String uid = user != null ? user.getUid() : null;
             if (uid == null) {
                 activeUid = null;
+                lastAutoRoutedAdminUid = "";
                 signedInLiveData.setValue(false);
-                stopAllUserListeners();
+                for (SessionSyncCallback callback : callbacks) {
+                    callback.onSessionEnd();
+                }
             } else if (!uid.equals(activeUid)) {
                 activeUid = uid;
                 signedInLiveData.setValue(true);
-                startAllUserListeners(uid, user);
-                ProfileRepository.getInstance().ensureUserDocumentExists(uid, user);
-                ProductRepository.getInstance().reconcileAllRatingsOnSignIn();
+                for (SessionSyncCallback callback : callbacks) {
+                    callback.onSessionStart(uid, user);
+                }
             }
         });
     }
@@ -77,20 +81,18 @@ public final class SessionSyncHelper {
         return signedInLiveData;
     }
 
-    private void startAllUserListeners(@NonNull String uid, @NonNull FirebaseUser authUser) {
-        ProfileRepository.getInstance().startUserListening(uid, authUser);
-        WishlistRepository.getInstance().startUserListening(uid);
-        CartRepository.getInstance().startUserListening(uid);
-        NotificationRepository.getInstance().startUserListening(uid);
-        OrderRepository.getInstance().startUserListening(uid);
+    public void markAdminAutoRouted() {
+        String uid = provider.getCurrentUid();
+        if (uid != null) {
+            lastAutoRoutedAdminUid = uid;
+        }
     }
 
-    private void stopAllUserListeners() {
-        ProfileRepository.getInstance().stopUserListening();
-        WishlistRepository.getInstance().stopUserListening();
-        CartRepository.getInstance().stopUserListening();
-        NotificationRepository.getInstance().stopUserListening();
-        OrderRepository.getInstance().stopUserListening();
-        HomeRepository.getInstance().resetRecentSearchesFromLocal();
+    public boolean tryMarkAdminAutoRouted(@Nullable String uid) {
+        if (uid == null || uid.isEmpty() || uid.equals(lastAutoRoutedAdminUid)) {
+            return false;
+        }
+        lastAutoRoutedAdminUid = uid;
+        return true;
     }
 }

@@ -3,13 +3,11 @@ package com.example.shoes_store.module.order;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.shoes_store.core.DateFormatUtil;
 import com.example.shoes_store.module.cart.CartItemModel;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -17,7 +15,32 @@ import java.util.Map;
  */
 public final class OrderService {
 
+    public static final long STANDARD_SHIPPING_FEE = 30_000L;
+    public static final long EXPRESS_SHIPPING_FEE = 55_000L;
+    public static final String SHIPPING_METHOD_STANDARD = "Giao tiêu chuẩn";
+    public static final String SHIPPING_METHOD_EXPRESS = "Giao nhanh 24h";
+
     private OrderService() {
+    }
+
+    public static long resolveShippingFee(boolean isExpress) {
+        return isExpress ? EXPRESS_SHIPPING_FEE : STANDARD_SHIPPING_FEE;
+    }
+
+    public static int countOrdersByStatus(
+            @Nullable List<OrderModel> orders,
+            @NonNull OrderModel.Status status
+    ) {
+        if (orders == null || orders.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (OrderModel order : orders) {
+            if (order != null && order.getStatus() == status) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public static long calculateSubtotal(@Nullable List<CartItemModel> items) {
@@ -39,7 +62,7 @@ public final class OrderService {
 
     @NonNull
     public static String generateOrderCode(long nowMillis) {
-        return "RN" + new SimpleDateFormat("yyMMddHHmmss", Locale.US).format(new Date(nowMillis));
+        return "RN" + DateFormatUtil.formatOrderCodeTimestamp(nowMillis);
     }
 
     @NonNull

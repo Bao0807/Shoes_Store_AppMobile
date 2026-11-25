@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.module.auth.AuthRepository;
 import com.example.shoes_store.module.order.OrderModel;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.voucher.VoucherModel;
@@ -19,6 +20,7 @@ import java.util.List;
 public class AdminViewModel extends ViewModel {
 
     private final AdminRepository repository = new AdminRepository();
+    private final AuthRepository authRepository = AuthRepository.getInstance();
     @Nullable
     private OrderModel.Status orderFilterStatus = null;
 
@@ -36,11 +38,6 @@ public class AdminViewModel extends ViewModel {
 
     public LiveData<List<VoucherModel>> getAllVouchersLiveData() {
         return repository.getAllVouchersLiveData();
-    }
-
-    @Nullable
-    public OrderModel.Status getOrderFilterStatus() {
-        return orderFilterStatus;
     }
 
     public void setOrderFilterStatus(@Nullable OrderModel.Status status) {
@@ -85,7 +82,7 @@ public class AdminViewModel extends ViewModel {
             @NonNull List<String> colorNames,
             @NonNull List<String> colorHexes,
             @NonNull List<String> sizes,
-            int stockPerVariant,
+            @Nullable Integer stockPerVariant,
             boolean isActive,
             @NonNull ResourceCallback<Void> callback
     ) {
@@ -128,6 +125,10 @@ public class AdminViewModel extends ViewModel {
             @NonNull ResourceCallback<Void> callback
     ) {
         repository.toggleVoucherActive(code, isActive, callback);
+    }
+
+    public void logout() {
+        authRepository.logout();
     }
 
     @Override

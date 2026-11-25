@@ -9,7 +9,6 @@ import com.example.shoes_store.R;
  */
 public class HomeBannerModel {
 
-    private final String bannerId;
     private final String badge;
     private final String title;
     private final String subtitle;
@@ -27,24 +26,11 @@ public class HomeBannerModel {
             String subtitle,
             String ctaLabel,
             String targetCategory,
-            int imageResId
-    ) {
-        this("", badge, title, subtitle, ctaLabel, targetCategory, "", imageResId, 0, true);
-    }
-
-    public HomeBannerModel(
-            String bannerId,
-            String badge,
-            String title,
-            String subtitle,
-            String ctaLabel,
-            String targetCategory,
             String imageUrl,
             int imageResId,
             int displayOrder,
             boolean active
     ) {
-        this.bannerId = bannerId != null ? bannerId : "";
         this.badge = badge != null ? badge : "";
         this.title = title != null ? title : "";
         this.subtitle = subtitle != null ? subtitle : "";
@@ -54,10 +40,6 @@ public class HomeBannerModel {
         this.imageResId = imageResId != 0 ? imageResId : R.drawable.img_banner_race;
         this.displayOrder = displayOrder;
         this.active = active;
-    }
-
-    public String getBannerId() {
-        return bannerId;
     }
 
     public String getBadge() {

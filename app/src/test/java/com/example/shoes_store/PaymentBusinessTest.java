@@ -6,8 +6,6 @@ import com.example.shoes_store.module.payment.PaymentService;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class PaymentBusinessTest {
 
@@ -36,7 +34,7 @@ public class PaymentBusinessTest {
     }
 
     @Test
-    public void paymentEnumsAndIsPaidWorkAsExpected() {
+    public void paymentEnumsAndModelStatusWorkAsExpected() {
         assertEquals(PaymentModel.Method.BANK_QR, PaymentModel.Method.fromStorage("BANK_QR"));
         assertEquals(PaymentModel.Method.E_WALLET, PaymentModel.Method.fromStorage("Ví điện tử"));
         assertEquals(PaymentModel.Method.COD, PaymentModel.Method.fromStorage(null));
@@ -45,16 +43,12 @@ public class PaymentBusinessTest {
         assertEquals(PaymentModel.Status.UNPAID, PaymentModel.Status.fromStorage(null));
 
         PaymentModel paid = new PaymentModel(
-                "pay_1", "ord_1", "u_1",
-                PaymentModel.Method.E_WALLET, PaymentModel.Status.PAID,
-                2_000_000L, "TXN-RN1", 1000L, 1000L
+                "ord_1", PaymentModel.Status.PAID, "TXN-RN1", 1000L
         );
         PaymentModel unpaid = new PaymentModel(
-                "pay_2", "ord_2", "u_1",
-                PaymentModel.Method.COD, PaymentModel.Status.UNPAID,
-                2_000_000L, "", 0L, 1000L
+                "ord_2", PaymentModel.Status.UNPAID, "", 1000L
         );
-        assertTrue(paid.isPaid());
-        assertFalse(unpaid.isPaid());
+        assertEquals(PaymentModel.Status.PAID, paid.getStatus());
+        assertEquals(PaymentModel.Status.UNPAID, unpaid.getStatus());
     }
 }

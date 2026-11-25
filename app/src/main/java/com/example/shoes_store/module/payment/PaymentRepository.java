@@ -11,6 +11,7 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -49,16 +50,23 @@ public class PaymentRepository {
                 .whereEqualTo(PaymentMapper.FIELD_USER_ID, uid)
                 .get()
                 .addOnSuccessListener(snap -> {
-                    DocumentReference latestRef = null;
-                    long newestMillis = -1L;
-                    for (DocumentSnapshot doc : snap.getDocuments()) {
-                        long created = FirestoreReadUtil.readMillis(doc, PaymentMapper.FIELD_CREATED_AT);
-                        if (latestRef == null || created >= newestMillis) {
-                            newestMillis = created;
-                            latestRef = doc.getReference();
-                        }
-                    }
-                    callback.onSuccess(latestRef);
+                    DocumentSnapshot latestDoc = findLatestDocument(snap.getDocuments());
+                    callback.onSuccess(latestDoc != null ? latestDoc.getReference() : null);
+                })
+                .addOnFailureListener(e -> callback.onError("Không thể tìm giao dịch thanh toán"));
+    }
+
+    public void findLatestPaymentRefForOrder(
+            @NonNull String orderId,
+            @NonNull ResourceCallback<DocumentReference> callback
+    ) {
+        provider.getFirestore()
+                .collection(FirebaseProviderHelper.COL_PAYMENTS)
+                .whereEqualTo(PaymentMapper.FIELD_ORDER_ID, orderId)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    DocumentSnapshot latestDoc = findLatestDocument(snap.getDocuments());
+                    callback.onSuccess(latestDoc != null ? latestDoc.getReference() : null);
                 })
                 .addOnFailureListener(e -> callback.onError("Không thể tìm giao dịch thanh toán"));
     }
@@ -75,16 +83,27 @@ public class PaymentRepository {
                 .whereEqualTo(PaymentMapper.FIELD_USER_ID, uid)
                 .get()
                 .addOnSuccessListener(snap -> {
-                    PaymentModel latest = null;
-                    for (DocumentSnapshot doc : snap.getDocuments()) {
-                        PaymentModel candidate = PaymentMapper.fromSnapshot(doc);
-                        if (latest == null || candidate.getCreatedAtMillis() >= latest.getCreatedAtMillis()) {
-                            latest = candidate;
-                        }
-                    }
-                    callback.onSuccess(latest);
+                    DocumentSnapshot latestDoc = findLatestDocument(snap.getDocuments());
+                    callback.onSuccess(latestDoc != null ? PaymentMapper.fromSnapshot(latestDoc) : null);
                 })
                 .addOnFailureListener(e -> callback.onError("Không thể tải chi tiết thanh toán"));
+    }
+
+    @Nullable
+    private static DocumentSnapshot findLatestDocument(@Nullable List<DocumentSnapshot> docs) {
+        if (docs == null || docs.isEmpty()) {
+            return null;
+        }
+        DocumentSnapshot latest = null;
+        long newestMillis = -1L;
+        for (DocumentSnapshot doc : docs) {
+            long created = FirestoreReadUtil.readMillis(doc, PaymentMapper.FIELD_CREATED_AT);
+            if (latest == null || created >= newestMillis) {
+                newestMillis = created;
+                latest = doc;
+            }
+        }
+        return latest;
     }
 
     // ===== 2. HỖ TRỢ TRANSACTION ĐƠN HÀNG =====
@@ -107,10 +126,5 @@ public class PaymentRepository {
         PaymentModel.Status status = PaymentService.resolveInitialStatus(method);
         String transactionCode = PaymentService.buildTransactionCode(status, orderCode);
         return PaymentMapper.toMap(paymentId, orderId, userId, method, status, amount, transactionCode, now);
-    }
-
-    @Nullable
-    public static PaymentModel.Status resolveInitialStatus(@NonNull PaymentModel.Method method) {
-        return PaymentService.resolveInitialStatus(method);
     }
 }

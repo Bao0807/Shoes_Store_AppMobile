@@ -75,7 +75,7 @@ public class HomeFilterStateTest {
                 id, name, brand, cat, price, price, rating, reviews, 0, "",
                 Collections.emptyList(), "250g", "8mm", "Cao", "Road", "",
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
-                Collections.emptySet(), Collections.emptyList(), true, 1000L
+                Collections.emptySet(), true, 1000L
         );
     }
 }

@@ -15,6 +15,76 @@ public final class CartService {
     private CartService() {
     }
 
+    /**
+     * Kết quả tổng hợp số lượng, tạm tính và trạng thái chọn toàn bộ trong Giỏ hàng.
+     */
+    public static final class CartSummary {
+        private final int totalQuantity;
+        private final int selectedQuantity;
+        private final long selectedSubtotal;
+        private final boolean allSelected;
+        private final boolean empty;
+
+        public CartSummary(
+                int totalQuantity,
+                int selectedQuantity,
+                long selectedSubtotal,
+                boolean allSelected,
+                boolean empty
+        ) {
+            this.totalQuantity = totalQuantity;
+            this.selectedQuantity = selectedQuantity;
+            this.selectedSubtotal = selectedSubtotal;
+            this.allSelected = allSelected;
+            this.empty = empty;
+        }
+
+        public int getTotalQuantity() {
+            return totalQuantity;
+        }
+
+        public int getSelectedQuantity() {
+            return selectedQuantity;
+        }
+
+        public long getSelectedSubtotal() {
+            return selectedSubtotal;
+        }
+
+        public boolean isAllSelected() {
+            return allSelected;
+        }
+
+        public boolean isEmpty() {
+            return empty;
+        }
+    }
+
+    @NonNull
+    public static CartSummary summarize(@Nullable List<CartItemModel> items) {
+        if (items == null || items.isEmpty()) {
+            return new CartSummary(0, 0, 0L, false, true);
+        }
+        int totalQtyAll = 0;
+        int selectedQty = 0;
+        long selectedSubtotal = 0L;
+        boolean allSelected = true;
+        for (CartItemModel item : items) {
+            totalQtyAll += item.getQuantity();
+            if (item.isSelected()) {
+                selectedQty += item.getQuantity();
+                selectedSubtotal += item.getLineTotal();
+            } else {
+                allSelected = false;
+            }
+        }
+        return new CartSummary(totalQtyAll, selectedQty, selectedSubtotal, allSelected, false);
+    }
+
+    public static long calculateFinalTotal(long selectedSubtotal, long discount) {
+        return Math.max(0L, Math.max(0L, selectedSubtotal) - Math.max(0L, discount));
+    }
+
     @Nullable
     public static CartItemModel findMatchingItem(
             @Nullable List<CartItemModel> currentItems,

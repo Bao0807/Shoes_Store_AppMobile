@@ -8,43 +8,34 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.shoes_store.core.AppPrefsHelper;
+import com.example.shoes_store.core.BaseFirestoreRepository;
 import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.core.FirestoreReadUtil;
 import com.example.shoes_store.core.ResourceCallback;
-import com.example.shoes_store.module.home.HomeRepository;
-import com.example.shoes_store.module.order.OrderModel;
-import com.example.shoes_store.module.order.OrderRepository;
-import com.example.shoes_store.module.voucher.VoucherModel;
-import com.example.shoes_store.module.voucher.VoucherRepository;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Repository sở hữu Hồ sơ runner (`users/{uid}`) và Sổ địa chỉ (`users/{uid}/addresses`).
  */
-public class ProfileRepository {
+public class ProfileRepository extends BaseFirestoreRepository {
 
     private static final String TAG = "ProfileRepository";
+    private static final String LISTENER_PROFILE = "profile";
+    private static final String LISTENER_ADDRESSES = "addresses";
     private static volatile ProfileRepository instance;
 
-    private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
     private final MutableLiveData<ProfileModel> profileLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<ProfileAddressModel>> addressesLiveData = new MutableLiveData<>(new ArrayList<>());
-    @Nullable
-    private ListenerRegistration profileRegistration;
-    @Nullable
-    private ListenerRegistration addressesRegistration;
+    private final MutableLiveData<List<String>> remoteRecentSearchesLiveData = new MutableLiveData<>();
 
     private ProfileRepository() {
     }
@@ -60,13 +51,23 @@ public class ProfileRepository {
         return instance;
     }
 
+    @Override
+    public void onSessionStart(@NonNull String uid, @NonNull FirebaseUser authUser) {
+        startUserListening(uid, authUser);
+        ensureUserDocumentExists(uid, authUser);
+    }
+
+    @Override
+    public void onSessionEnd() {
+        stopUserListening();
+    }
+
     // ===== 1. REALTIME =====
 
     public void startUserListening(@NonNull String uid, @NonNull FirebaseUser authUser) {
         stopUserListening();
-        FirebaseFirestore db = provider.getFirestore();
 
-        profileRegistration = db.collection(FirebaseProviderHelper.COL_USERS)
+        replaceUserListener(LISTENER_PROFILE, collection(FirebaseProviderHelper.COL_USERS)
                 .document(uid)
                 .addSnapshotListener((doc, error) -> {
                     if (error != null) {
@@ -79,44 +80,28 @@ public class ProfileRepository {
                     profileLiveData.setValue(ProfileMapper.profileFromSnapshot(doc, uid));
                     List<String> remoteSearches = FirestoreReadUtil.readStringList(doc, ProfileMapper.FIELD_RECENT_SEARCHES);
                     if (!remoteSearches.isEmpty()) {
-                        HomeRepository.getInstance().applyRemoteRecentSearches(remoteSearches);
+                        remoteRecentSearchesLiveData.setValue(remoteSearches);
                     }
-                });
+                }));
 
-        addressesRegistration = db.collection(FirebaseProviderHelper.COL_USERS)
-                .document(uid)
-                .collection(FirebaseProviderHelper.SUB_ADDRESSES)
-                .addSnapshotListener((snap, error) -> {
-                    if (error != null) {
-                        Log.w(TAG, "Addresses listener error: " + error.getMessage());
-                    }
-                    if (snap == null) {
-                        return;
-                    }
-                    List<ProfileAddressModel> list = new ArrayList<>();
-                    for (DocumentSnapshot doc : snap.getDocuments()) {
-                        list.add(ProfileMapper.addressFromSnapshot(doc, uid));
-                    }
-                    Collections.sort(list, (a, b) -> Boolean.compare(b.isDefaultAddress(), a.isDefaultAddress()));
-                    addressesLiveData.setValue(list);
-                });
+        replaceUserListener(LISTENER_ADDRESSES, listenCollection(
+                userSubCollection(uid, FirebaseProviderHelper.SUB_ADDRESSES),
+                TAG,
+                ProfileMapper::addressFromSnapshot,
+                (a, b) -> Boolean.compare(b.isDefaultAddress(), a.isDefaultAddress()),
+                addressesLiveData::setValue
+        ));
     }
 
     public void stopUserListening() {
-        if (profileRegistration != null) {
-            profileRegistration.remove();
-            profileRegistration = null;
-        }
-        if (addressesRegistration != null) {
-            addressesRegistration.remove();
-            addressesRegistration = null;
-        }
+        clearUserListeners();
         profileLiveData.setValue(null);
         addressesLiveData.setValue(new ArrayList<>());
+        remoteRecentSearchesLiveData.setValue(null);
     }
 
     public void ensureUserDocumentExists(@NonNull String uid, @NonNull FirebaseUser authUser) {
-        FirebaseFirestore db = provider.getFirestore();
+        FirebaseFirestore db = db();
         db.collection(FirebaseProviderHelper.COL_USERS).document(uid)
                 .get()
                 .addOnSuccessListener(doc -> {
@@ -141,16 +126,12 @@ public class ProfileRepository {
         return profileLiveData;
     }
 
-    public LiveData<List<OrderModel>> getOrdersLiveData() {
-        return OrderRepository.getInstance().getOrdersLiveData();
+    public LiveData<List<String>> getRemoteRecentSearchesLiveData() {
+        return remoteRecentSearchesLiveData;
     }
 
     public LiveData<List<ProfileAddressModel>> getAddressesLiveData() {
         return addressesLiveData;
-    }
-
-    public List<VoucherModel> getVouchers() {
-        return VoucherRepository.getInstance().getVouchers();
     }
 
     @Nullable

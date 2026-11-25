@@ -3,6 +3,7 @@ package com.example.shoes_store.core;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,6 +19,7 @@ import java.util.List;
  */
 public final class AppPrefsHelper {
 
+    private static final String TAG = "AppPrefsHelper";
     private static final String PREF_NAME = "shoes_store_prefs";
     private static final String KEY_LAST_EMAIL = "last_login_email";
     private static final String KEY_RECENT_SEARCHES = "recent_searches_json";
@@ -68,7 +70,8 @@ public final class AppPrefsHelper {
                     list.add(term);
                 }
             }
-        } catch (JSONException ignored) {
+        } catch (JSONException e) {
+            Log.w(TAG, "Corrupted recent searches JSON: " + e.getMessage());
             // Trả danh sách rỗng nếu JSON cũ bị lỗi
         }
         return list;

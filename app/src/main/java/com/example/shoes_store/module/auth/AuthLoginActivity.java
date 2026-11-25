@@ -6,20 +6,18 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AppPrefsHelper;
+import com.example.shoes_store.core.BaseActivity;
+import com.example.shoes_store.core.InputValidatorUtil;
 import com.example.shoes_store.core.ResourceCallback;
-import com.example.shoes_store.core.UiInsetHelper;
 import com.example.shoes_store.module.admin.AdminDashboardActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -28,9 +26,9 @@ import com.google.android.material.textfield.TextInputLayout;
 /**
  * Màn hình Đăng nhập bằng Email / Mật khẩu (hỗ trợ Guest-first quay về tab mục tiêu).
  */
-public class AuthLoginActivity extends AppCompatActivity {
+public class AuthLoginActivity extends BaseActivity {
 
-    public static final String EXTRA_TARGET_TAB = "extra_target_tab";
+    public static final String EXTRA_RETURN_TAB = "extra_return_tab";
 
     private AuthViewModel viewModel;
     private int targetTabId = 0;
@@ -42,18 +40,16 @@ public class AuthLoginActivity extends AppCompatActivity {
 
     public static void openForTab(@NonNull Context context, int targetTabId) {
         Intent intent = new Intent(context, AuthLoginActivity.class);
-        intent.putExtra(EXTRA_TARGET_TAB, targetTabId);
+        intent.putExtra(EXTRA_RETURN_TAB, targetTabId);
         context.startActivity(intent);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        WindowCompat.enableEdgeToEdge(getWindow());
-        setContentView(R.layout.auth_login_activity);
-        UiInsetHelper.applySystemBarInsets(findViewById(R.id.auth_login_root));
+        setEdgeToEdgeContent(R.layout.auth_login_activity, R.id.auth_login_root);
 
-        targetTabId = getIntent().getIntExtra(EXTRA_TARGET_TAB, 0);
+        targetTabId = getIntent().getIntExtra(EXTRA_RETURN_TAB, 0);
         viewModel = new ViewModelProvider(this).get(AuthViewModel.class);
 
         TextInputLayout emailLayout = findViewById(R.id.auth_login_email_layout);
@@ -67,12 +63,12 @@ public class AuthLoginActivity extends AppCompatActivity {
             emailInput.setText(savedEmail);
         }
 
-        findViewById(R.id.auth_login_back_btn).setOnClickListener(v -> finish());
+        bindBackButton(R.id.auth_login_back_btn);
 
         findViewById(R.id.auth_go_register_btn).setOnClickListener(v -> {
             Intent intent = new Intent(this, AuthRegisterActivity.class);
             if (targetTabId != 0) {
-                intent.putExtra(EXTRA_TARGET_TAB, targetTabId);
+                intent.putExtra(EXTRA_RETURN_TAB, targetTabId);
             }
             startActivity(intent);
         });
@@ -92,7 +88,7 @@ public class AuthLoginActivity extends AppCompatActivity {
             String email = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
             String password = passwordInput.getText() != null ? passwordInput.getText().toString() : "";
 
-            String emailError = AuthValidator.validateEmail(email);
+            String emailError = InputValidatorUtil.validateEmail(email);
             String passError = AuthValidator.validatePassword(password);
             emailLayout.setError(emailError);
             passwordLayout.setError(passError);
@@ -103,26 +99,25 @@ public class AuthLoginActivity extends AppCompatActivity {
             viewModel.loginAndResolveAdmin(email, password, new ResourceCallback<Boolean>() {
                 @Override
                 public void onSuccess(Boolean isAdmin) {
+                    if (!isAlive()) {
+                        return;
+                    }
                     if (Boolean.TRUE.equals(isAdmin)) {
-                        Toast.makeText(
-                                AuthLoginActivity.this,
-                                "Xin chào Quản trị viên (Admin)",
-                                Toast.LENGTH_SHORT
-                        ).show();
-                        MainActivity.markAdminAutoRouted();
+                        showToast("Xin chào Quản trị viên (Admin)");
+                        viewModel.markAdminAutoRouted();
                         Intent adminIntent = new Intent(AuthLoginActivity.this, AdminDashboardActivity.class);
                         adminIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                         startActivity(adminIntent);
                         finish();
                         return;
                     }
-                    Toast.makeText(AuthLoginActivity.this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
+                    showToast("Đăng nhập thành công");
                     navigateAfterLogin();
                 }
 
                 @Override
                 public void onError(String message) {
-                    Toast.makeText(AuthLoginActivity.this, message, Toast.LENGTH_LONG).show();
+                    showLongToast(message);
                 }
             });
         });
@@ -150,24 +145,20 @@ public class AuthLoginActivity extends AppCompatActivity {
                 .setNegativeButton("Hủy", null)
                 .setPositiveButton("Gửi email", (dialog, which) -> {
                     String email = input.getText() != null ? input.getText().toString().trim() : "";
-                    String err = AuthValidator.validateEmail(email);
+                    String err = InputValidatorUtil.validateEmail(email);
                     if (err != null) {
-                        Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
+                        showToast(err);
                         return;
                     }
                     viewModel.sendPasswordReset(email, new ResourceCallback<Void>() {
                         @Override
                         public void onSuccess(Void data) {
-                            Toast.makeText(
-                                    AuthLoginActivity.this,
-                                    "Đã gửi email đặt lại mật khẩu tới " + email,
-                                    Toast.LENGTH_LONG
-                            ).show();
+                            showLongToast("Đã gửi email đặt lại mật khẩu tới " + email);
                         }
 
                         @Override
                         public void onError(String message) {
-                            Toast.makeText(AuthLoginActivity.this, message, Toast.LENGTH_LONG).show();
+                            showLongToast(message);
                         }
                     });
                 })
@@ -176,10 +167,7 @@ public class AuthLoginActivity extends AppCompatActivity {
 
     private void navigateAfterLogin() {
         if (targetTabId != 0) {
-            Intent intent = new Intent(this, MainActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            intent.putExtra(MainActivity.EXTRA_TARGET_TAB, targetTabId);
-            startActivity(intent);
+            MainActivity.openTab(this, targetTabId);
         } else {
             setResult(RESULT_OK);
         }

@@ -1,10 +1,8 @@
 package com.example.shoes_store.core;
 
-import android.content.Context;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 
 import com.example.shoes_store.R;
 
@@ -13,32 +11,34 @@ import com.example.shoes_store.R;
  */
 public final class CategoryStyleHelper {
 
+    public static final String CAT_ALL = "Tất cả";
+    public static final String CAT_DAILY = "Daily";
+    public static final String CAT_RACE = "Race";
+    public static final String CAT_TEMPO = "Tempo";
+    public static final String CAT_TRAIL = "Trail";
+    public static final String CAT_RECOVERY = "Recovery";
+
     private CategoryStyleHelper() {
     }
 
     public static void applyCategoryBadge(@NonNull TextView badgeView, @NonNull String category) {
-        Context context = badgeView.getContext();
         int bgColorRes = R.color.tag_daily_bg;
         int textColorRes = R.color.tag_daily_text;
 
-        if ("Race".equalsIgnoreCase(category)) {
+        if (CAT_RACE.equalsIgnoreCase(category)) {
             bgColorRes = R.color.tag_race_bg;
             textColorRes = R.color.tag_race_text;
-        } else if ("Tempo".equalsIgnoreCase(category)) {
+        } else if (CAT_TEMPO.equalsIgnoreCase(category)) {
             bgColorRes = R.color.tag_tempo_bg;
             textColorRes = R.color.tag_tempo_text;
-        } else if ("Trail".equalsIgnoreCase(category)) {
+        } else if (CAT_TRAIL.equalsIgnoreCase(category)) {
             bgColorRes = R.color.tag_trail_bg;
             textColorRes = R.color.tag_trail_text;
-        } else if ("Recovery".equalsIgnoreCase(category)) {
+        } else if (CAT_RECOVERY.equalsIgnoreCase(category)) {
             bgColorRes = R.color.tag_recovery_bg;
             textColorRes = R.color.tag_recovery_text;
         }
 
-        badgeView.setText(category.toUpperCase());
-        badgeView.setTextColor(ContextCompat.getColor(context, textColorRes));
-        if (badgeView.getBackground() != null) {
-            badgeView.getBackground().mutate().setTint(ContextCompat.getColor(context, bgColorRes));
-        }
+        StatusBadgeHelper.applyBadge(badgeView, category.toUpperCase(), bgColorRes, textColorRes);
     }
 }

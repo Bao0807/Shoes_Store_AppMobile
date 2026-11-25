@@ -6,7 +6,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 
+import com.example.shoes_store.core.BaseFirestoreRepository;
 import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.core.FirestoreReadUtil;
 import com.example.shoes_store.core.ResourceCallback;
@@ -14,32 +16,29 @@ import com.example.shoes_store.module.product.ProductMapper;
 import com.example.shoes_store.module.product.ProductModel;
 import com.example.shoes_store.module.product.ProductRepository;
 import com.example.shoes_store.module.product.ProductVariantModel;
-import com.example.shoes_store.module.voucher.VoucherModel;
-import com.example.shoes_store.module.voucher.VoucherRepository;
 import com.google.firebase.Timestamp;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Repository sở hữu toàn bộ Giỏ hàng (`users/{uid}/cart`): đồng bộ realtime, kiểm tồn kho và cập nhật Firestore.
  */
-public class CartRepository {
+public class CartRepository extends BaseFirestoreRepository {
 
     private static final String TAG = "CartRepository";
+    private static final String LISTENER_CART = "cart";
     private static volatile CartRepository instance;
 
-    private final FirebaseProviderHelper provider = FirebaseProviderHelper.getInstance();
     private final MutableLiveData<List<CartItemModel>> cartItemsLiveData = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<Integer> cartTotalCountLiveData = new MutableLiveData<>(0);
     private final List<RawCartDoc> rawCartDocs = new ArrayList<>();
-    @Nullable
-    private ListenerRegistration cartRegistration;
+    private final Observer<List<ProductModel>> productsObserver = products -> rebuildCartLiveData();
+    private boolean observingProducts = false;
 
     private CartRepository() {
     }
@@ -55,50 +54,62 @@ public class CartRepository {
         return instance;
     }
 
+    @Override
+    public void onSessionStart(@NonNull String uid, @NonNull FirebaseUser authUser) {
+        if (!observingProducts) {
+            ProductRepository.getInstance()
+                    .getProductsLiveData()
+                    .observeForever(productsObserver);
+            observingProducts = true;
+        }
+        startUserListening(uid);
+    }
+
+    @Override
+    public void onSessionEnd() {
+        if (observingProducts) {
+            ProductRepository.getInstance()
+                    .getProductsLiveData()
+                    .removeObserver(productsObserver);
+            observingProducts = false;
+        }
+        stopUserListening();
+    }
+
     // ===== 1. REALTIME =====
 
     public void startUserListening(@NonNull String uid) {
         stopUserListening();
-        cartRegistration = provider.getFirestore()
-                .collection(FirebaseProviderHelper.COL_USERS)
-                .document(uid)
-                .collection(FirebaseProviderHelper.SUB_CART)
-                .addSnapshotListener((snap, error) -> {
-                    if (error != null) {
-                        Log.w(TAG, "Cart listener error: " + error.getMessage());
-                    }
-                    if (snap == null) {
-                        return;
-                    }
+        replaceUserListener(LISTENER_CART, listenCollection(
+                userSubCollection(uid, FirebaseProviderHelper.SUB_CART),
+                TAG,
+                doc -> new RawCartDoc(
+                        doc.getId(),
+                        FirestoreReadUtil.readString(doc, CartMapper.FIELD_PRODUCT_ID, ""),
+                        FirestoreReadUtil.readString(doc, CartMapper.FIELD_VARIANT_ID, ""),
+                        FirestoreReadUtil.readString(doc, CartMapper.FIELD_SIZE, "42"),
+                        FirestoreReadUtil.readString(doc, CartMapper.FIELD_COLOR_NAME, "Mặc định"),
+                        Math.max(1, FirestoreReadUtil.readInt(doc, CartMapper.FIELD_QUANTITY, 1)),
+                        FirestoreReadUtil.readBoolean(doc, CartMapper.FIELD_SELECTED, true),
+                        FirestoreReadUtil.readMillis(doc, CartMapper.FIELD_UPDATED_AT)
+                ),
+                (a, b) -> Long.compare(b.updatedAtMillis, a.updatedAtMillis),
+                list -> {
                     rawCartDocs.clear();
-                    for (DocumentSnapshot doc : snap.getDocuments()) {
-                        rawCartDocs.add(new RawCartDoc(
-                                doc.getId(),
-                                FirestoreReadUtil.readString(doc, CartMapper.FIELD_PRODUCT_ID, ""),
-                                FirestoreReadUtil.readString(doc, CartMapper.FIELD_VARIANT_ID, ""),
-                                FirestoreReadUtil.readString(doc, CartMapper.FIELD_SIZE, "42"),
-                                FirestoreReadUtil.readString(doc, CartMapper.FIELD_COLOR_NAME, "Mặc định"),
-                                Math.max(1, FirestoreReadUtil.readInt(doc, CartMapper.FIELD_QUANTITY, 1)),
-                                FirestoreReadUtil.readBoolean(doc, CartMapper.FIELD_SELECTED, true),
-                                FirestoreReadUtil.readMillis(doc, CartMapper.FIELD_UPDATED_AT)
-                        ));
-                    }
-                    Collections.sort(rawCartDocs, (a, b) -> Long.compare(b.updatedAtMillis, a.updatedAtMillis));
+                    rawCartDocs.addAll(list);
                     rebuildCartLiveData();
-                });
+                }
+        ));
     }
 
     public void stopUserListening() {
-        if (cartRegistration != null) {
-            cartRegistration.remove();
-            cartRegistration = null;
-        }
+        clearUserListeners();
         rawCartDocs.clear();
         cartItemsLiveData.setValue(new ArrayList<>());
         cartTotalCountLiveData.setValue(0);
     }
 
-    public void rebuildCartLiveData() {
+    private void rebuildCartLiveData() {
         ProductRepository productRepository = ProductRepository.getInstance();
         List<CartItemModel> resolved = new ArrayList<>();
         int totalQty = 0;
@@ -150,14 +161,6 @@ public class CartRepository {
         return selected;
     }
 
-    public LiveData<List<VoucherModel>> getVouchersLiveData() {
-        return VoucherRepository.getInstance().getVouchersLiveData();
-    }
-
-    public List<VoucherModel> getVouchers() {
-        return VoucherRepository.getInstance().getVouchers();
-    }
-
     // ===== 3. GHI =====
 
     public boolean addToCartWithinStock(
@@ -182,7 +185,7 @@ public class CartRepository {
         return true;
     }
 
-    public void addToCart(
+    private void addToCart(
             @NonNull ProductModel product,
             @NonNull String variantId,
             @NonNull String size,

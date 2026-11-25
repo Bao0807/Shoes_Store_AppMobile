@@ -19,15 +19,14 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AvatarImageHelper;
+import com.example.shoes_store.core.DialogHelper;
+import com.example.shoes_store.core.UserRoleHelper;
 import com.example.shoes_store.module.admin.AdminDashboardActivity;
-import com.example.shoes_store.module.admin.AdminService;
-import com.example.shoes_store.module.auth.AuthRepository;
 import com.example.shoes_store.module.order.OrderHistoryActivity;
 import com.example.shoes_store.module.order.OrderModel;
-import com.example.shoes_store.module.voucher.VoucherModel;
+import com.example.shoes_store.module.order.OrderService;
+import com.example.shoes_store.module.voucher.VoucherService;
 import com.google.android.material.imageview.ShapeableImageView;
-
-import java.util.List;
 
 /**
  * Tab 5 - Tài khoản & Hồ sơ chạy bộ đồng bộ với Firebase Authentication và Cloud Firestore.
@@ -76,29 +75,7 @@ public class ProfileFragment extends Fragment {
         });
 
         view.findViewById(R.id.menu_vouchers).setOnClickListener(v -> {
-            List<VoucherModel> vouchers = viewModel.getVouchers();
-            String message;
-            if (vouchers == null || vouchers.isEmpty()) {
-                message = "Hiện chưa có mã giảm giá khả dụng";
-            } else {
-                StringBuilder sb = new StringBuilder();
-                for (VoucherModel voucher : vouchers) {
-                    if (sb.length() > 0) {
-                        sb.append("\n\n");
-                    }
-                    sb.append("• ").append(voucher.getCode()).append(" (").append(voucher.getShortBadge()).append(")\n  ")
-                            .append(voucher.getTitle()).append(" · ").append(voucher.getDescription());
-                    if (voucher.getUsageLimit() > 0) {
-                        int remaining = Math.max(0, voucher.getUsageLimit() - voucher.getUsedCount());
-                        sb.append("\n  Còn ").append(remaining).append("/").append(voucher.getUsageLimit()).append(" lượt");
-                    }
-                    if (!voucher.getExpiryDate().isEmpty()) {
-                        sb.append(voucher.getUsageLimit() > 0 ? " · " : "\n  ")
-                                .append("HSD: ").append(voucher.getExpiryDate());
-                    }
-                }
-                message = sb.toString();
-            }
+            String message = VoucherService.formatVoucherWalletMessage(viewModel.getVouchers());
             new AlertDialog.Builder(requireContext())
                     .setTitle("Kho Voucher của bạn")
                     .setMessage(message)
@@ -126,44 +103,37 @@ public class ProfileFragment extends Fragment {
                 startActivity(new Intent(requireContext(), ProfileTermsActivity.class)));
 
         view.findViewById(R.id.menu_logout).setOnClickListener(v ->
-                new AlertDialog.Builder(requireContext())
-                        .setTitle(R.string.auth_logout)
-                        .setMessage("Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại?")
-                        .setNegativeButton("Hủy", null)
-                        .setPositiveButton(R.string.auth_logout, (dialog, which) -> {
-                            AuthRepository.getInstance().logout();
+                DialogHelper.showConfirmDialog(
+                        requireContext(),
+                        getString(R.string.auth_logout),
+                        "Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại?",
+                        "Hủy",
+                        getString(R.string.auth_logout),
+                        R.drawable.ic_logout,
+                        true,
+                        () -> {
+                            viewModel.logout();
                             Toast.makeText(requireContext(), "Đã đăng xuất", Toast.LENGTH_SHORT).show();
                             if (getActivity() instanceof MainActivity) {
                                 ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
                             }
-                        })
-                        .show());
+                        }
+                ));
 
         viewModel.getProfileLiveData().observe(getViewLifecycleOwner(), profile -> {
             if (profile == null) {
                 return;
             }
-            AvatarImageHelper.bindAvatar(avatarView, profile);
+            AvatarImageHelper.bindAvatar(avatarView, profile.getAvatarUri(), profile.getAvatarResId());
             nameView.setText(profile.getFullName());
             runnerSummaryView.setText("Size EU " + profile.getPreferredSize() + " · " + profile.getRunningGoal());
-            boolean isAdmin = AdminService.isAdminRole(profile.getRole());
+            boolean isAdmin = UserRoleHelper.isAdminRole(profile.getRole());
             adminCard.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getOrdersLiveData().observe(getViewLifecycleOwner(), orders -> {
-            int pendingCount = 0;
-            int shippingCount = 0;
-            if (orders != null) {
-                for (OrderModel order : orders) {
-                    if (order.getStatus() == OrderModel.Status.PENDING) {
-                        pendingCount++;
-                    } else if (order.getStatus() == OrderModel.Status.SHIPPING) {
-                        shippingCount++;
-                    }
-                }
-            }
-            updateBadge(pendingBadge, pendingCount);
-            updateBadge(shippingBadge, shippingCount);
+            updateBadge(pendingBadge, OrderService.countOrdersByStatus(orders, OrderModel.Status.PENDING));
+            updateBadge(shippingBadge, OrderService.countOrdersByStatus(orders, OrderModel.Status.SHIPPING));
         });
     }
 

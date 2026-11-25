@@ -67,18 +67,7 @@ public class VoucherAdapter extends RecyclerView.Adapter<VoucherAdapter.VoucherV
         holder.shortBadgeText.setText(item.getShortBadge());
         holder.codeText.setText(item.getCode());
 
-        StringBuilder meta = new StringBuilder();
-        if (!item.getExpiryDate().isEmpty()) {
-            meta.append("HSD: ").append(item.getExpiryDate());
-        }
-        if (item.getUsageLimit() > 0) {
-            int remaining = Math.max(0, item.getUsageLimit() - item.getUsedCount());
-            if (meta.length() > 0) {
-                meta.append(" · ");
-            }
-            meta.append("Còn ").append(remaining).append(" lượt");
-        }
-        holder.expiryText.setText(meta.toString());
+        holder.expiryText.setText(VoucherService.formatExpiryAndQuotaMeta(item));
 
         holder.titleText.setText(item.getTitle());
         holder.descText.setText(item.getDescription());
