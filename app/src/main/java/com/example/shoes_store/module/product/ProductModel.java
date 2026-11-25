@@ -1,12 +1,26 @@
 package com.example.shoes_store.module.product;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.example.shoes_store.R;
+import com.example.shoes_store.core.CategoryStyleHelper;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
- * Model sản phẩm giày chạy bộ kèm thông số chuyên biệt cho runner.
+ * Model sản phẩm giày chạy bộ kèm thông số chuyên biệt và danh sách biến thể màu/size.
  */
 public class ProductModel {
+
+    public static final String DEFAULT_EU_SIZE_RANGE = "EU 38 - 44";
 
     private final String id;
     private final String name;
@@ -17,7 +31,8 @@ public class ProductModel {
     private final double rating;
     private final int reviewCount;
     private final int imageResId;
-    private final int[] galleryResIds;
+    private final String thumbnailUrl;
+    private final List<String> galleryUrls;
     private final String weightGrams;
     private final String heelDropMm;
     private final String cushionLevel;
@@ -27,7 +42,9 @@ public class ProductModel {
     private final List<String> colorHexes;
     private final List<String> allSizes;
     private final Set<String> outOfStockSizes;
-    private final List<ProductReviewModel> reviews;
+    private final boolean active;
+    private final long createdAtMillis;
+    private final List<ProductVariantModel> variants = new ArrayList<>();
 
     public ProductModel(
             String id,
@@ -39,7 +56,8 @@ public class ProductModel {
             double rating,
             int reviewCount,
             int imageResId,
-            int[] galleryResIds,
+            String thumbnailUrl,
+            List<String> galleryUrls,
             String weightGrams,
             String heelDropMm,
             String cushionLevel,
@@ -49,28 +67,31 @@ public class ProductModel {
             List<String> colorHexes,
             List<String> allSizes,
             Set<String> outOfStockSizes,
-            List<ProductReviewModel> reviews
+            boolean active,
+            long createdAtMillis
     ) {
-        this.id = id;
-        this.name = name;
-        this.brand = brand;
-        this.category = category;
+        this.id = id != null ? id : "";
+        this.name = name != null ? name : "";
+        this.brand = brand != null ? brand : "";
+        this.category = category != null ? category : CategoryStyleHelper.CAT_DAILY;
         this.price = price;
         this.originalPrice = originalPrice;
         this.rating = rating;
         this.reviewCount = reviewCount;
-        this.imageResId = imageResId;
-        this.galleryResIds = galleryResIds;
-        this.weightGrams = weightGrams;
-        this.heelDropMm = heelDropMm;
-        this.cushionLevel = cushionLevel;
-        this.surfaceType = surfaceType;
-        this.description = description;
-        this.colorNames = colorNames;
-        this.colorHexes = colorHexes;
-        this.allSizes = allSizes;
-        this.outOfStockSizes = outOfStockSizes;
-        this.reviews = reviews;
+        this.imageResId = imageResId != 0 ? imageResId : R.drawable.img_shoe_asics_novablast;
+        this.thumbnailUrl = thumbnailUrl != null ? thumbnailUrl : "";
+        this.galleryUrls = galleryUrls != null ? new ArrayList<>(galleryUrls) : new ArrayList<>();
+        this.weightGrams = weightGrams != null ? weightGrams : "";
+        this.heelDropMm = heelDropMm != null ? heelDropMm : "";
+        this.cushionLevel = cushionLevel != null ? cushionLevel : "";
+        this.surfaceType = surfaceType != null ? surfaceType : "";
+        this.description = description != null ? description : "";
+        this.colorNames = colorNames != null ? colorNames : new ArrayList<>();
+        this.colorHexes = colorHexes != null ? colorHexes : new ArrayList<>();
+        this.allSizes = allSizes != null ? allSizes : new ArrayList<>();
+        this.outOfStockSizes = outOfStockSizes != null ? outOfStockSizes : new LinkedHashSet<>();
+        this.active = active;
+        this.createdAtMillis = createdAtMillis;
     }
 
     public String getId() {
@@ -120,8 +141,14 @@ public class ProductModel {
         return imageResId;
     }
 
-    public int[] getGalleryResIds() {
-        return galleryResIds;
+    @NonNull
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    @NonNull
+    public List<String> getGalleryUrls() {
+        return galleryUrls;
     }
 
     public String getWeightGrams() {
@@ -160,7 +187,146 @@ public class ProductModel {
         return outOfStockSizes;
     }
 
-    public List<ProductReviewModel> getReviews() {
-        return reviews;
+    public boolean isActive() {
+        return active;
+    }
+
+    public long getCreatedAtMillis() {
+        return createdAtMillis;
+    }
+
+    @NonNull
+    public List<ProductVariantModel> getVariants() {
+        return variants;
+    }
+
+    public void setVariants(@Nullable List<ProductVariantModel> loadedVariants) {
+        variants.clear();
+        if (loadedVariants != null) {
+            variants.addAll(loadedVariants);
+        }
+    }
+
+    @NonNull
+    public List<ProductVariantModel> getColorRepresentatives() {
+        if (variants.isEmpty()) {
+            List<ProductVariantModel> fallback = new ArrayList<>();
+            for (int i = 0; i < colorNames.size(); i++) {
+                String cName = colorNames.get(i);
+                String cHex = i < colorHexes.size() ? colorHexes.get(i) : "#111827";
+                fallback.add(new ProductVariantModel("", id, cName, cHex, thumbnailUrl, "", 1));
+            }
+            return fallback;
+        }
+        Map<String, ProductVariantModel> map = new LinkedHashMap<>();
+        for (ProductVariantModel v : variants) {
+            if (!map.containsKey(v.getColorName())) {
+                map.put(v.getColorName(), v);
+            }
+        }
+        return new ArrayList<>(map.values());
+    }
+
+    @NonNull
+    public List<String> getSizesForColor(@Nullable String colorName) {
+        if (variants.isEmpty()) {
+            return new ArrayList<>(allSizes);
+        }
+        List<String> sizes = new ArrayList<>();
+        for (ProductVariantModel v : variants) {
+            if (colorName == null || colorName.isEmpty() || v.getColorName().equalsIgnoreCase(colorName)) {
+                if (!sizes.contains(v.getSize())) {
+                    sizes.add(v.getSize());
+                }
+            }
+        }
+        return sizes.isEmpty() ? new ArrayList<>(allSizes) : sizes;
+    }
+
+    @NonNull
+    public Set<String> getOutOfStockSizesForColor(@Nullable String colorName) {
+        if (variants.isEmpty()) {
+            return new LinkedHashSet<>(outOfStockSizes);
+        }
+        Set<String> out = new LinkedHashSet<>();
+        for (ProductVariantModel v : variants) {
+            if ((colorName == null || colorName.isEmpty() || v.getColorName().equalsIgnoreCase(colorName))
+                    && !v.isInStock()) {
+                out.add(v.getSize());
+            }
+        }
+        return out;
+    }
+
+    @Nullable
+    public ProductVariantModel findVariant(@Nullable String colorName, @Nullable String size) {
+        if (size == null) {
+            return null;
+        }
+        for (ProductVariantModel v : variants) {
+            boolean colorMatch = colorName == null || colorName.isEmpty() || v.getColorName().equalsIgnoreCase(colorName);
+            if (colorMatch && v.getSize().equalsIgnoreCase(size)) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    @NonNull
+    public String getEuSizeRange() {
+        List<String> sizes;
+        if (!variants.isEmpty()) {
+            Set<String> distinct = new LinkedHashSet<>();
+            for (ProductVariantModel v : variants) {
+                if (!v.getSize().trim().isEmpty()) {
+                    distinct.add(v.getSize().trim());
+                }
+            }
+            sizes = new ArrayList<>(distinct);
+            Collections.sort(sizes, Comparator.comparingDouble(s -> {
+                try {
+                    return Double.parseDouble(s);
+                } catch (NumberFormatException e) {
+                    return 0.0;
+                }
+            }));
+        } else {
+            sizes = allSizes;
+        }
+        return (sizes != null && !sizes.isEmpty())
+                ? "EU " + sizes.get(0) + " - " + sizes.get(sizes.size() - 1)
+                : DEFAULT_EU_SIZE_RANGE;
+    }
+
+    @NonNull
+    public ProductModel withReviewStats(double nextRating, int nextReviewCount) {
+        ProductModel copy = new ProductModel(
+                id,
+                name,
+                brand,
+                category,
+                price,
+                originalPrice,
+                nextRating,
+                Math.max(0, nextReviewCount),
+                imageResId,
+                thumbnailUrl,
+                galleryUrls,
+                weightGrams,
+                heelDropMm,
+                cushionLevel,
+                surfaceType,
+                description,
+                colorNames,
+                colorHexes,
+                allSizes,
+                outOfStockSizes,
+                active,
+                createdAtMillis
+        );
+        if (!variants.isEmpty()) {
+            copy.setVariants(variants);
+        }
+        return copy;
     }
 }

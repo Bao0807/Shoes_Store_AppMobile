@@ -17,6 +17,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.CategoryStyleHelper;
+import com.example.shoes_store.core.ResourceCallback;
 import com.example.shoes_store.module.product.ProductDetailActivity;
 import com.example.shoes_store.module.product.ProductModel;
 import com.google.android.material.chip.ChipGroup;
@@ -68,8 +70,21 @@ public class WishlistFragment extends Fragment {
 
             @Override
             public void onAddToCart(ProductModel product) {
-                String size = viewModel.addQuickToCart(product);
-                Toast.makeText(requireContext(), "Đã thêm " + product.getName() + " (EU " + size + ") vào giỏ", Toast.LENGTH_SHORT).show();
+                viewModel.addQuickToCart(product, new ResourceCallback<String>() {
+                    @Override
+                    public void onSuccess(String size) {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), "Đã thêm " + product.getName() + " (EU " + size + ") vào giỏ", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
             }
         });
 
@@ -88,17 +103,17 @@ public class WishlistFragment extends Fragment {
             }
             int id = checkedIds.get(0);
             if (id == R.id.wl_chip_daily) {
-                viewModel.setSelectedCategory("Daily");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_DAILY);
             } else if (id == R.id.wl_chip_race) {
-                viewModel.setSelectedCategory("Race");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_RACE);
             } else if (id == R.id.wl_chip_tempo) {
-                viewModel.setSelectedCategory("Tempo");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_TEMPO);
             } else if (id == R.id.wl_chip_trail) {
-                viewModel.setSelectedCategory("Trail");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_TRAIL);
             } else if (id == R.id.wl_chip_recovery) {
-                viewModel.setSelectedCategory("Recovery");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_RECOVERY);
             } else {
-                viewModel.setSelectedCategory("Tất cả");
+                viewModel.setSelectedCategory(CategoryStyleHelper.CAT_ALL);
             }
             renderFavorites();
         });
@@ -107,6 +122,8 @@ public class WishlistFragment extends Fragment {
             latestFavoriteIds = ids;
             renderFavorites();
         });
+
+        viewModel.getProductsLiveData().observe(getViewLifecycleOwner(), products -> renderFavorites());
     }
 
     private void renderFavorites() {

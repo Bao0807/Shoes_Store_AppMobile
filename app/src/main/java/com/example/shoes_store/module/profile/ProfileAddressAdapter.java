@@ -1,6 +1,5 @@
 package com.example.shoes_store.module.profile;
 
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -9,14 +8,12 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.example.shoes_store.core.BaseListAdapter;
 
 /**
  * Adapter hiển thị danh sách địa chỉ giao hàng.
  */
-public class ProfileAddressAdapter extends RecyclerView.Adapter<ProfileAddressAdapter.AddressViewHolder> {
+public class ProfileAddressAdapter extends BaseListAdapter<ProfileAddressModel, ProfileAddressAdapter.AddressViewHolder> {
 
     public interface OnAddressActionListener {
         void onSelectAddress(ProfileAddressModel address);
@@ -28,39 +25,28 @@ public class ProfileAddressAdapter extends RecyclerView.Adapter<ProfileAddressAd
         void onDeleteAddress(ProfileAddressModel address);
     }
 
-    private final List<ProfileAddressModel> addresses = new ArrayList<>();
     private final OnAddressActionListener listener;
 
     public ProfileAddressAdapter(OnAddressActionListener listener) {
         this.listener = listener;
     }
 
-    public void submitList(List<ProfileAddressModel> list) {
-        addresses.clear();
-        if (list != null) {
-            addresses.addAll(list);
-        }
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public AddressViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.profile_item_address, parent, false);
-        return new AddressViewHolder(view);
+        return new AddressViewHolder(inflate(parent, R.layout.profile_item_address));
     }
 
     @Override
     public void onBindViewHolder(@NonNull AddressViewHolder holder, int position) {
-        ProfileAddressModel item = addresses.get(position);
+        ProfileAddressModel item = getItem(position);
         holder.receiverPhoneText.setText(item.getReceiverName() + " · " + item.getPhone());
         holder.tagText.setText(item.getLabel());
         holder.defaultBadge.setVisibility(item.isDefaultAddress() ? View.VISIBLE : View.GONE);
         holder.detailText.setText(item.getAddressDetail());
 
         holder.setDefaultBtn.setVisibility(item.isDefaultAddress() ? View.INVISIBLE : View.VISIBLE);
-        holder.deleteBtn.setVisibility(addresses.size() > 1 ? View.VISIBLE : View.GONE);
+        holder.deleteBtn.setVisibility(getItemCount() > 1 ? View.VISIBLE : View.GONE);
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
@@ -82,11 +68,6 @@ public class ProfileAddressAdapter extends RecyclerView.Adapter<ProfileAddressAd
                 listener.onDeleteAddress(item);
             }
         });
-    }
-
-    @Override
-    public int getItemCount() {
-        return addresses.size();
     }
 
     static class AddressViewHolder extends RecyclerView.ViewHolder {

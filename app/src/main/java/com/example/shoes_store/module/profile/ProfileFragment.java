@@ -1,6 +1,8 @@
 package com.example.shoes_store.module.profile;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,14 +19,17 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.shoes_store.MainActivity;
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AvatarImageHelper;
-import com.example.shoes_store.core.MockStoreHelper;
-import com.example.shoes_store.module.cart.CartVoucherModel;
+import com.example.shoes_store.core.DialogHelper;
+import com.example.shoes_store.core.UserRoleHelper;
+import com.example.shoes_store.module.admin.AdminDashboardActivity;
 import com.example.shoes_store.module.order.OrderHistoryActivity;
 import com.example.shoes_store.module.order.OrderModel;
+import com.example.shoes_store.module.order.OrderService;
+import com.example.shoes_store.module.voucher.VoucherService;
 import com.google.android.material.imageview.ShapeableImageView;
 
 /**
- * Tab 5 - Tài khoản & Hồ sơ chạy bộ (chưa có Đăng nhập/Đăng xuất).
+ * Tab 5 - Tài khoản & Hồ sơ chạy bộ đồng bộ với Firebase Authentication và Cloud Firestore.
  */
 public class ProfileFragment extends Fragment {
 
@@ -42,8 +47,12 @@ public class ProfileFragment extends Fragment {
         ShapeableImageView avatarView = view.findViewById(R.id.profile_avatar);
         TextView nameView = view.findViewById(R.id.profile_name);
         TextView runnerSummaryView = view.findViewById(R.id.profile_runner_summary);
+        View adminCard = view.findViewById(R.id.profile_admin_card);
         TextView pendingBadge = view.findViewById(R.id.badge_order_pending);
         TextView shippingBadge = view.findViewById(R.id.badge_order_shipping);
+
+        adminCard.setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), AdminDashboardActivity.class)));
 
         View.OnClickListener openEditProfile = v ->
                 startActivity(new Intent(requireContext(), ProfileEditActivity.class));
@@ -66,27 +75,26 @@ public class ProfileFragment extends Fragment {
         });
 
         view.findViewById(R.id.menu_vouchers).setOnClickListener(v -> {
-            StringBuilder sb = new StringBuilder();
-            for (CartVoucherModel voucher : MockStoreHelper.getInstance().getVouchers()) {
-                if (sb.length() > 0) {
-                    sb.append("\n\n");
-                }
-                sb.append("• ").append(voucher.getCode()).append(" (").append(voucher.getShortBadge()).append(")\n  ")
-                        .append(voucher.getTitle()).append(" · ").append(voucher.getDescription());
-            }
+            String message = VoucherService.formatVoucherWalletMessage(viewModel.getVouchers());
             new AlertDialog.Builder(requireContext())
                     .setTitle("Kho Voucher của bạn")
-                    .setMessage(sb.toString())
+                    .setMessage(message)
                     .setPositiveButton("Đóng", null)
                     .show();
         });
 
-        view.findViewById(R.id.menu_support).setOnClickListener(v ->
+        view.findViewById(R.id.menu_support).setOnClickListener(v -> {
+            try {
+                Intent dialIntent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:19006868"));
+                startActivity(dialIntent);
+            } catch (ActivityNotFoundException e) {
                 Toast.makeText(
                         requireContext(),
                         "Hotline tư vấn chọn giày chạy: 1900 6868 (8:00 - 21:00)",
                         Toast.LENGTH_LONG
-                ).show());
+                ).show();
+            }
+        });
 
         view.findViewById(R.id.menu_about).setOnClickListener(v ->
                 startActivity(new Intent(requireContext(), ProfileAboutActivity.class)));
@@ -94,29 +102,38 @@ public class ProfileFragment extends Fragment {
         view.findViewById(R.id.menu_terms).setOnClickListener(v ->
                 startActivity(new Intent(requireContext(), ProfileTermsActivity.class)));
 
+        view.findViewById(R.id.menu_logout).setOnClickListener(v ->
+                DialogHelper.showConfirmDialog(
+                        requireContext(),
+                        getString(R.string.auth_logout),
+                        "Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại?",
+                        "Hủy",
+                        getString(R.string.auth_logout),
+                        R.drawable.ic_logout,
+                        true,
+                        () -> {
+                            viewModel.logout();
+                            Toast.makeText(requireContext(), "Đã đăng xuất", Toast.LENGTH_SHORT).show();
+                            if (getActivity() instanceof MainActivity) {
+                                ((MainActivity) getActivity()).navigateToTab(R.id.nav_home);
+                            }
+                        }
+                ));
+
         viewModel.getProfileLiveData().observe(getViewLifecycleOwner(), profile -> {
             if (profile == null) {
                 return;
             }
-            AvatarImageHelper.bindAvatar(avatarView, profile);
+            AvatarImageHelper.bindAvatar(avatarView, profile.getAvatarUri(), profile.getAvatarResId());
             nameView.setText(profile.getFullName());
             runnerSummaryView.setText("Size EU " + profile.getPreferredSize() + " · " + profile.getRunningGoal());
+            boolean isAdmin = UserRoleHelper.isAdminRole(profile.getRole());
+            adminCard.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
         });
 
         viewModel.getOrdersLiveData().observe(getViewLifecycleOwner(), orders -> {
-            int pendingCount = 0;
-            int shippingCount = 0;
-            if (orders != null) {
-                for (OrderModel order : orders) {
-                    if (order.getStatus() == OrderModel.Status.PENDING) {
-                        pendingCount++;
-                    } else if (order.getStatus() == OrderModel.Status.SHIPPING) {
-                        shippingCount++;
-                    }
-                }
-            }
-            updateBadge(pendingBadge, pendingCount);
-            updateBadge(shippingBadge, shippingCount);
+            updateBadge(pendingBadge, OrderService.countOrdersByStatus(orders, OrderModel.Status.PENDING));
+            updateBadge(shippingBadge, OrderService.countOrdersByStatus(orders, OrderModel.Status.SHIPPING));
         });
     }
 

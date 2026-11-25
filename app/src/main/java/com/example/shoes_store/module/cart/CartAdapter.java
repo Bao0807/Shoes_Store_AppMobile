@@ -1,6 +1,5 @@
 package com.example.shoes_store.module.cart;
 
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -11,16 +10,15 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseListAdapter;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.RemoteImageHelper;
 import com.google.android.material.checkbox.MaterialCheckBox;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Adapter hiển thị danh sách sản phẩm trong Giỏ hàng.
  */
-public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder> {
+public class CartAdapter extends BaseListAdapter<CartItemModel, CartAdapter.CartViewHolder> {
 
     public interface OnCartItemActionListener {
         void onItemClick(CartItemModel item);
@@ -32,33 +30,22 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
         void onRemoveClick(CartItemModel item);
     }
 
-    private final List<CartItemModel> items = new ArrayList<>();
     private final OnCartItemActionListener listener;
 
     public CartAdapter(OnCartItemActionListener listener) {
         this.listener = listener;
     }
 
-    public void submitList(List<CartItemModel> list) {
-        items.clear();
-        if (list != null) {
-            items.addAll(list);
-        }
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public CartViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.cart_item_line, parent, false);
-        return new CartViewHolder(view);
+        return new CartViewHolder(inflate(parent, R.layout.cart_item_line));
     }
 
     @Override
     public void onBindViewHolder(@NonNull CartViewHolder holder, int position) {
-        CartItemModel item = items.get(position);
-        holder.imageView.setImageResource(item.getProduct().getImageResId());
+        CartItemModel item = getItem(position);
+        RemoteImageHelper.bindImage(holder.imageView, item.getProduct().getThumbnailUrl(), item.getProduct().getImageResId());
         holder.brandText.setText(item.getProduct().getBrand());
         holder.nameText.setText(item.getProduct().getName());
         holder.variantText.setText("EU " + item.getSize() + " · " + item.getColorName());
@@ -93,11 +80,6 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
                 listener.onRemoveClick(item);
             }
         });
-    }
-
-    @Override
-    public int getItemCount() {
-        return items.size();
     }
 
     static class CartViewHolder extends RecyclerView.ViewHolder {

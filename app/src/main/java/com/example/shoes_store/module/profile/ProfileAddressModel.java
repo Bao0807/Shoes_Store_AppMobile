@@ -6,11 +6,11 @@ package com.example.shoes_store.module.profile;
 public class ProfileAddressModel {
 
     private final String id;
-    private String receiverName;
-    private String phone;
-    private String addressDetail;
-    private String label;
-    private boolean defaultAddress;
+    private final String receiverName;
+    private final String phone;
+    private final String addressDetail;
+    private final String label;
+    private final boolean defaultAddress;
 
     public ProfileAddressModel(
             String id,
@@ -20,11 +20,11 @@ public class ProfileAddressModel {
             String label,
             boolean defaultAddress
     ) {
-        this.id = id;
-        this.receiverName = receiverName;
-        this.phone = phone;
-        this.addressDetail = addressDetail;
-        this.label = label;
+        this.id = id != null ? id : "";
+        this.receiverName = receiverName != null ? receiverName : "";
+        this.phone = phone != null ? phone : "";
+        this.addressDetail = addressDetail != null ? addressDetail : "";
+        this.label = label != null ? label : "Nhà riêng";
         this.defaultAddress = defaultAddress;
     }
 
@@ -36,39 +36,19 @@ public class ProfileAddressModel {
         return receiverName;
     }
 
-    public void setReceiverName(String receiverName) {
-        this.receiverName = receiverName;
-    }
-
     public String getPhone() {
         return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
     }
 
     public String getAddressDetail() {
         return addressDetail;
     }
 
-    public void setAddressDetail(String addressDetail) {
-        this.addressDetail = addressDetail;
-    }
-
     public String getLabel() {
         return label;
     }
 
-    public void setLabel(String label) {
-        this.label = label;
-    }
-
     public boolean isDefaultAddress() {
         return defaultAddress;
-    }
-
-    public void setDefaultAddress(boolean defaultAddress) {
-        this.defaultAddress = defaultAddress;
     }
 }

@@ -1,7 +1,6 @@
 package com.example.shoes_store.module.home;
 
 import android.graphics.Paint;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -12,20 +11,20 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.shoes_store.R;
+import com.example.shoes_store.core.BaseListAdapter;
 import com.example.shoes_store.core.CategoryStyleHelper;
 import com.example.shoes_store.core.CurrencyFormatUtil;
+import com.example.shoes_store.core.RemoteImageHelper;
 import com.example.shoes_store.module.product.ProductModel;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 /**
  * Adapter hiển thị lưới 2 cột giày chạy bộ ở Trang chủ và Tìm kiếm.
  */
-public class HomeShoeAdapter extends RecyclerView.Adapter<HomeShoeAdapter.ShoeViewHolder> {
+public class HomeShoeAdapter extends BaseListAdapter<ProductModel, HomeShoeAdapter.ShoeViewHolder> {
 
     public interface OnShoeInteractionListener {
         void onShoeClick(ProductModel product);
@@ -33,20 +32,11 @@ public class HomeShoeAdapter extends RecyclerView.Adapter<HomeShoeAdapter.ShoeVi
         void onFavoriteToggle(ProductModel product);
     }
 
-    private final List<ProductModel> items = new ArrayList<>();
     private final Set<String> favoriteIds = new HashSet<>();
     private final OnShoeInteractionListener listener;
 
     public HomeShoeAdapter(OnShoeInteractionListener listener) {
         this.listener = listener;
-    }
-
-    public void submitProducts(List<ProductModel> newItems) {
-        items.clear();
-        if (newItems != null) {
-            items.addAll(newItems);
-        }
-        notifyDataSetChanged();
     }
 
     public void setFavoriteIds(Set<String> newFavoriteIds) {
@@ -60,15 +50,13 @@ public class HomeShoeAdapter extends RecyclerView.Adapter<HomeShoeAdapter.ShoeVi
     @NonNull
     @Override
     public ShoeViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.home_item_shoe, parent, false);
-        return new ShoeViewHolder(view);
+        return new ShoeViewHolder(inflate(parent, R.layout.home_item_shoe));
     }
 
     @Override
     public void onBindViewHolder(@NonNull ShoeViewHolder holder, int position) {
-        ProductModel item = items.get(position);
-        holder.shoeImage.setImageResource(item.getImageResId());
+        ProductModel item = getItem(position);
+        RemoteImageHelper.bindImage(holder.shoeImage, item.getThumbnailUrl(), item.getImageResId());
         CategoryStyleHelper.applyCategoryBadge(holder.categoryBadge, item.getCategory());
 
         if (item.hasDiscount()) {
@@ -86,7 +74,8 @@ public class HomeShoeAdapter extends RecyclerView.Adapter<HomeShoeAdapter.ShoeVi
 
         holder.brandText.setText(item.getBrand());
         holder.nameText.setText(item.getName());
-        holder.ratingText.setText(String.format(Locale.US, "%.1f", item.getRating()));
+        double displayRating = item.getReviewCount() <= 0 ? 0.0 : item.getRating();
+        holder.ratingText.setText(String.format(Locale.US, "%.1f", displayRating));
         holder.reviewCountText.setText("(" + item.getReviewCount() + ")");
         holder.priceText.setText(CurrencyFormatUtil.formatVnd(item.getPrice()));
 
@@ -107,11 +96,6 @@ public class HomeShoeAdapter extends RecyclerView.Adapter<HomeShoeAdapter.ShoeVi
                 listener.onFavoriteToggle(item);
             }
         });
-    }
-
-    @Override
-    public int getItemCount() {
-        return items.size();
     }
 
     static class ShoeViewHolder extends RecyclerView.ViewHolder {

@@ -1,98 +1,173 @@
 package com.example.shoes_store.module.home;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 
-import com.example.shoes_store.core.MockStoreHelper;
+import com.example.shoes_store.core.AppPrefsHelper;
+import com.example.shoes_store.core.BaseFirestoreRepository;
+import com.example.shoes_store.core.FirebaseProviderHelper;
 import com.example.shoes_store.module.product.ProductModel;
-import com.example.shoes_store.module.profile.ProfileModel;
+import com.example.shoes_store.module.product.ProductRepository;
+import com.example.shoes_store.module.profile.ProfileMapper;
+import com.example.shoes_store.module.profile.ProfileRepository;
+import com.example.shoes_store.module.voucher.VoucherRepository;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 /**
- * Repository cho màn Trang chủ và Tìm kiếm/Lọc sản phẩm.
+ * Repository sở hữu đồng bộ realtime Banner, lịch sử tìm kiếm và truy vấn lọc/sắp xếp Trang chủ.
  */
-public class HomeRepository {
+public class HomeRepository extends BaseFirestoreRepository {
 
-    private final MockStoreHelper store = MockStoreHelper.getInstance();
+    private static final String TAG = "HomeRepository";
+    private static final String LISTENER_BANNERS = "banners";
+    private static volatile HomeRepository instance;
 
-    public LiveData<List<ProductModel>> getProductsLiveData() {
-        return store.getProductsLiveData();
+    private final MutableLiveData<List<HomeBannerModel>> bannersLiveData = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<String>> recentSearchesLiveData = new MutableLiveData<>(new ArrayList<>());
+    private final Observer<List<String>> remoteSearchesObserver = remoteSearches -> {
+        if (remoteSearches != null && !remoteSearches.isEmpty()) {
+            applyRemoteRecentSearches(remoteSearches);
+        }
+    };
+    private boolean observingRemoteSearches = false;
+
+    private HomeRepository() {
     }
 
-    public LiveData<Set<String>> getFavoriteIdsLiveData() {
-        return store.getFavoriteIdsLiveData();
+    public static HomeRepository getInstance() {
+        if (instance == null) {
+            synchronized (HomeRepository.class) {
+                if (instance == null) {
+                    instance = new HomeRepository();
+                }
+            }
+        }
+        return instance;
     }
 
-    public LiveData<ProfileModel> getProfileLiveData() {
-        return store.getProfileLiveData();
+    @Override
+    public void onAppInit() {
+        initLocalSearches();
+        startPublicListening();
+    }
+
+    @Override
+    public void onSessionStart(@NonNull String uid, @NonNull FirebaseUser authUser) {
+        if (!observingRemoteSearches) {
+            ProfileRepository.getInstance()
+                    .getRemoteRecentSearchesLiveData()
+                    .observeForever(remoteSearchesObserver);
+            observingRemoteSearches = true;
+        }
+    }
+
+    @Override
+    public void onSessionEnd() {
+        if (observingRemoteSearches) {
+            ProfileRepository.getInstance()
+                    .getRemoteRecentSearchesLiveData()
+                    .removeObserver(remoteSearchesObserver);
+            observingRemoteSearches = false;
+        }
+        resetRecentSearchesFromLocal();
+        super.onSessionEnd();
+    }
+
+    // ===== 1. REALTIME =====
+
+    public void initLocalSearches() {
+        recentSearchesLiveData.setValue(AppPrefsHelper.getRecentSearches());
+    }
+
+    public void startPublicListening() {
+        replacePublicListener(LISTENER_BANNERS, listenCollection(
+                collection(FirebaseProviderHelper.COL_BANNERS),
+                TAG,
+                doc -> {
+                    HomeBannerModel banner = HomeBannerMapper.fromSnapshot(doc);
+                    return banner.isActive() ? banner : null;
+                },
+                Comparator.comparingInt(HomeBannerModel::getDisplayOrder),
+                bannersLiveData::setValue
+        ));
+    }
+
+    public void refreshPublicCatalog() {
+        collection(FirebaseProviderHelper.COL_BANNERS)
+                .get()
+                .addOnFailureListener(e -> Log.w(TAG, "Refresh banners failed: " + e.getMessage()));
+        ProductRepository.getInstance().refreshPublicCatalog();
+        VoucherRepository.getInstance().refreshPublicCatalog();
+    }
+
+    private void applyRemoteRecentSearches(@NonNull List<String> remoteSearches) {
+        if (!remoteSearches.isEmpty()) {
+            AppPrefsHelper.replaceRecentSearches(remoteSearches);
+            recentSearchesLiveData.setValue(remoteSearches);
+        }
+    }
+
+    private void resetRecentSearchesFromLocal() {
+        recentSearchesLiveData.setValue(AppPrefsHelper.getRecentSearches());
+    }
+
+    // ===== 2. ĐỌC =====
+
+    public LiveData<List<HomeBannerModel>> getBannersLiveData() {
+        return bannersLiveData;
     }
 
     public LiveData<List<String>> getRecentSearchesLiveData() {
-        return store.getRecentSearchesLiveData();
+        return recentSearchesLiveData;
     }
 
-    public List<HomeBannerModel> getBanners() {
-        return store.getBanners();
+    @NonNull
+    public List<String> getAvailableCategories() {
+        return HomeSearchService.getAvailableCategories(ProductRepository.getInstance().getAllProducts());
     }
 
-    public boolean toggleFavorite(@NonNull String productId) {
-        return store.toggleFavorite(productId);
+    @NonNull
+    public List<String> getAvailableBrands() {
+        return HomeSearchService.getAvailableBrands(ProductRepository.getInstance().getAllProducts());
     }
+
+    @NonNull
+    public List<ProductModel> filterAndSort(@NonNull HomeFilterState state) {
+        return HomeSearchService.filterAndSort(ProductRepository.getInstance().getAllProducts(), state);
+    }
+
+    // ===== 3. GHI =====
 
     public void addRecentSearch(@NonNull String query) {
-        store.addRecentSearch(query);
+        List<String> updated = AppPrefsHelper.addRecentSearch(query);
+        recentSearchesLiveData.setValue(updated);
+        syncRecentSearchesToFirestore(updated);
     }
 
     public void removeRecentSearch(@NonNull String query) {
-        store.removeRecentSearch(query);
+        List<String> updated = AppPrefsHelper.removeRecentSearch(query);
+        recentSearchesLiveData.setValue(updated);
+        syncRecentSearchesToFirestore(updated);
     }
 
-    public List<ProductModel> filterAndSort(@NonNull HomeFilterState state) {
-        List<ProductModel> source = store.getAllProducts();
-        List<ProductModel> filtered = new ArrayList<>();
-        String queryLower = state.getQuery().trim().toLowerCase(Locale.getDefault());
+    // ===== 4. PRIVATE HELPERS =====
 
-        for (ProductModel p : source) {
-            if (!state.isAllCategoriesSelected() && !state.isCategorySelected(p.getCategory())) {
-                continue;
-            }
-            if (!state.isAllBrandsSelected() && !state.isBrandSelected(p.getBrand())) {
-                continue;
-            }
-            if (p.getPrice() < state.getMinPrice() || p.getPrice() > state.getMaxPrice()) {
-                continue;
-            }
-            if (!queryLower.isEmpty()) {
-                String haystack = (p.getName() + " " + p.getBrand() + " " + p.getCategory())
-                        .toLowerCase(Locale.getDefault());
-                if (!haystack.contains(queryLower)) {
-                    continue;
-                }
-            }
-            filtered.add(p);
+    private void syncRecentSearchesToFirestore(@NonNull List<String> updated) {
+        String uid = provider.getCurrentUid();
+        if (uid == null) {
+            return;
         }
-
-        switch (state.getSortOption()) {
-            case PRICE_ASC:
-                Collections.sort(filtered, Comparator.comparingLong(ProductModel::getPrice));
-                break;
-            case PRICE_DESC:
-                Collections.sort(filtered, (a, b) -> Long.compare(b.getPrice(), a.getPrice()));
-                break;
-            case RATING_DESC:
-                Collections.sort(filtered, (a, b) -> Double.compare(b.getRating(), a.getRating()));
-                break;
-            case POPULAR:
-            default:
-                Collections.sort(filtered, (a, b) -> Integer.compare(b.getReviewCount(), a.getReviewCount()));
-                break;
-        }
-        return filtered;
+        collection(FirebaseProviderHelper.COL_USERS)
+                .document(uid)
+                .update(ProfileMapper.FIELD_RECENT_SEARCHES, updated)
+                .addOnFailureListener(e -> Log.w(TAG, "Sync recentSearches failed: " + e.getMessage()));
     }
 }

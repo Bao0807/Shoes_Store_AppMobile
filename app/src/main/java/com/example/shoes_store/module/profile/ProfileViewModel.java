@@ -5,7 +5,12 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.shoes_store.core.ResourceCallback;
+import com.example.shoes_store.module.auth.AuthRepository;
 import com.example.shoes_store.module.order.OrderModel;
+import com.example.shoes_store.module.order.OrderRepository;
+import com.example.shoes_store.module.voucher.VoucherModel;
+import com.example.shoes_store.module.voucher.VoucherRepository;
 
 import java.util.List;
 
@@ -14,18 +19,25 @@ import java.util.List;
  */
 public class ProfileViewModel extends ViewModel {
 
-    private final ProfileRepository repository = new ProfileRepository();
+    private final ProfileRepository repository = ProfileRepository.getInstance();
+    private final OrderRepository orderRepository = OrderRepository.getInstance();
+    private final VoucherRepository voucherRepository = VoucherRepository.getInstance();
+    private final AuthRepository authRepository = AuthRepository.getInstance();
 
     public LiveData<ProfileModel> getProfileLiveData() {
         return repository.getProfileLiveData();
     }
 
     public LiveData<List<OrderModel>> getOrdersLiveData() {
-        return repository.getOrdersLiveData();
+        return orderRepository.getOrdersLiveData();
     }
 
     public LiveData<List<ProfileAddressModel>> getAddressesLiveData() {
         return repository.getAddressesLiveData();
+    }
+
+    public List<VoucherModel> getVouchers() {
+        return voucherRepository.getVouchers();
     }
 
     public void updateProfile(
@@ -34,9 +46,10 @@ public class ProfileViewModel extends ViewModel {
             @NonNull String email,
             @NonNull String preferredSize,
             @NonNull String runningGoal,
-            @Nullable String avatarUri
+            @Nullable String avatarUri,
+            @Nullable ResourceCallback<Void> callback
     ) {
-        repository.updateProfile(fullName, phone, email, preferredSize, runningGoal, avatarUri);
+        repository.updateProfile(fullName, phone, email, preferredSize, runningGoal, avatarUri, callback);
     }
 
     public void addOrUpdateAddress(
@@ -45,16 +58,21 @@ public class ProfileViewModel extends ViewModel {
             @NonNull String phone,
             @NonNull String addressDetail,
             @NonNull String label,
-            boolean isDefault
+            boolean isDefault,
+            @Nullable ResourceCallback<Void> callback
     ) {
-        repository.addOrUpdateAddress(editId, receiverName, phone, addressDetail, label, isDefault);
+        repository.addOrUpdateAddress(editId, receiverName, phone, addressDetail, label, isDefault, callback);
     }
 
-    public void setDefaultAddress(@NonNull String id) {
-        repository.setDefaultAddress(id);
+    public void setDefaultAddress(@NonNull String id, @Nullable ResourceCallback<Void> callback) {
+        repository.setDefaultAddress(id, callback);
     }
 
-    public void deleteAddress(@NonNull String id) {
-        repository.deleteAddress(id);
+    public void deleteAddress(@NonNull String id, @Nullable ResourceCallback<Void> callback) {
+        repository.deleteAddress(id, callback);
+    }
+
+    public void logout() {
+        authRepository.logout();
     }
 }

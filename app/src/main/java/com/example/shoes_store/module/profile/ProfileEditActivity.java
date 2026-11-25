@@ -5,8 +5,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Button;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
@@ -14,13 +12,15 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.AvatarImageHelper;
-import com.example.shoes_store.core.UiInsetHelper;
+import com.example.shoes_store.core.BaseActivity;
+import com.example.shoes_store.core.CategoryStyleHelper;
+import com.example.shoes_store.core.DialogHelper;
+import com.example.shoes_store.core.InputValidatorUtil;
+import com.example.shoes_store.core.ResourceCallback;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.imageview.ShapeableImageView;
@@ -33,7 +33,7 @@ import java.util.List;
 /**
  * Màn hình Chỉnh sửa thông tin cá nhân & hồ sơ chạy bộ.
  */
-public class ProfileEditActivity extends AppCompatActivity {
+public class ProfileEditActivity extends BaseActivity {
 
     private static final String KEY_AVATAR_URI = "state_avatar_uri";
     private static final String KEY_FALLBACK_AVATAR_RES = "state_fallback_avatar_res";
@@ -42,7 +42,13 @@ public class ProfileEditActivity extends AppCompatActivity {
     private static final String KEY_INITIALIZED = "state_initialized";
 
     private static final String[] SIZES = {"38", "39", "40", "40.5", "41", "42", "43", "44"};
-    private static final String[] GOALS = {"Daily", "Race", "Trail", "Daily & Half Marathon", "Full Marathon"};
+    private static final String[] GOALS = {
+            CategoryStyleHelper.CAT_DAILY,
+            CategoryStyleHelper.CAT_RACE,
+            CategoryStyleHelper.CAT_TRAIL,
+            "Daily & Half Marathon",
+            "Full Marathon"
+    };
 
     private String selectedSize = "42";
     private String selectedGoal = "Daily & Half Marathon";
@@ -58,14 +64,25 @@ public class ProfileEditActivity extends AppCompatActivity {
                 if (uri == null) {
                     return;
                 }
-                String savedUri = AvatarImageHelper.saveAvatarFromUri(this, uri);
-                if (savedUri != null) {
-                    selectedAvatarUri = savedUri;
-                    AvatarImageHelper.bindAvatar(avatarView, selectedAvatarUri, fallbackAvatarResId);
-                    Toast.makeText(this, "Đã chọn ảnh đại diện mới", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Không thể đọc ảnh đã chọn", Toast.LENGTH_SHORT).show();
-                }
+                AvatarImageHelper.saveAvatarFromUri(this, uri, new ResourceCallback<String>() {
+                    @Override
+                    public void onSuccess(String savedUri) {
+                        if (!isAlive()) {
+                            return;
+                        }
+                        selectedAvatarUri = savedUri;
+                        AvatarImageHelper.bindAvatar(avatarView, selectedAvatarUri, fallbackAvatarResId);
+                        showToast("Đã chọn ảnh đại diện mới");
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (!isAlive()) {
+                            return;
+                        }
+                        showToast(message);
+                    }
+                });
             });
 
     private final ActivityResultLauncher<Void> takePhotoLauncher =
@@ -73,22 +90,31 @@ public class ProfileEditActivity extends AppCompatActivity {
                 if (bitmap == null) {
                     return;
                 }
-                String savedUri = AvatarImageHelper.saveAvatarBitmap(this, bitmap);
-                if (savedUri != null) {
-                    selectedAvatarUri = savedUri;
-                    AvatarImageHelper.bindAvatar(avatarView, selectedAvatarUri, fallbackAvatarResId);
-                    Toast.makeText(this, "Đã chụp ảnh đại diện mới", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Không thể lưu ảnh vừa chụp", Toast.LENGTH_SHORT).show();
-                }
+                AvatarImageHelper.saveAvatarBitmap(this, bitmap, new ResourceCallback<String>() {
+                    @Override
+                    public void onSuccess(String savedUri) {
+                        if (!isAlive()) {
+                            return;
+                        }
+                        selectedAvatarUri = savedUri;
+                        AvatarImageHelper.bindAvatar(avatarView, selectedAvatarUri, fallbackAvatarResId);
+                        showToast("Đã chụp ảnh đại diện mới");
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (!isAlive()) {
+                            return;
+                        }
+                        showToast(message);
+                    }
+                });
             });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        WindowCompat.enableEdgeToEdge(getWindow());
-        setContentView(R.layout.profile_edit_activity);
-        UiInsetHelper.applySystemBarInsets(findViewById(R.id.profile_edit_root));
+        setEdgeToEdgeContent(R.layout.profile_edit_activity, R.id.profile_edit_root);
 
         if (savedInstanceState != null) {
             selectedAvatarUri = savedInstanceState.getString(KEY_AVATAR_URI);
@@ -109,7 +135,7 @@ public class ProfileEditActivity extends AppCompatActivity {
         ChipGroup sizeChips = findViewById(R.id.edit_size_chips);
         ChipGroup goalChips = findViewById(R.id.edit_goal_chips);
 
-        findViewById(R.id.edit_back_btn).setOnClickListener(v -> finish());
+        bindBackButton(R.id.edit_back_btn);
         View.OnClickListener openAvatarPicker = v -> showAvatarOptionsDialog();
         avatarContainer.setOnClickListener(openAvatarPicker);
         changeAvatarBtn.setOnClickListener(openAvatarPicker);
@@ -142,13 +168,37 @@ public class ProfileEditActivity extends AppCompatActivity {
             String fullName = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
             String phone = phoneInput.getText() != null ? phoneInput.getText().toString().trim() : "";
             String email = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
-            if (fullName.isEmpty() || phone.isEmpty()) {
-                Toast.makeText(this, "Vui lòng nhập đầy đủ họ tên và SĐT", Toast.LENGTH_SHORT).show();
+            String nameError = InputValidatorUtil.validateFullName(fullName);
+            if (nameError != null) {
+                showToast(nameError);
                 return;
             }
-            viewModel.updateProfile(fullName, phone, email, selectedSize, selectedGoal, selectedAvatarUri);
-            Toast.makeText(this, "Đã lưu hồ sơ chạy bộ", Toast.LENGTH_SHORT).show();
-            finish();
+            String phoneError = InputValidatorUtil.validatePhone(phone);
+            if (phoneError != null) {
+                showToast(phoneError);
+                return;
+            }
+            v.setEnabled(false);
+            viewModel.updateProfile(fullName, phone, email, selectedSize, selectedGoal, selectedAvatarUri,
+                    new ResourceCallback<Void>() {
+                        @Override
+                        public void onSuccess(Void data) {
+                            if (!isAlive()) {
+                                return;
+                            }
+                            showToast("Đã lưu hồ sơ chạy bộ");
+                            finish();
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            if (!isAlive()) {
+                                return;
+                            }
+                            v.setEnabled(true);
+                            showToast(message);
+                        }
+                    });
         });
     }
 
@@ -184,7 +234,7 @@ public class ProfileEditActivity extends AppCompatActivity {
                     } else if (which == 3 && hasCustomAvatar) {
                         selectedAvatarUri = null;
                         AvatarImageHelper.bindAvatar(avatarView, null, fallbackAvatarResId);
-                        Toast.makeText(this, "Đã chọn lại ảnh mặc định", Toast.LENGTH_SHORT).show();
+                        showToast("Đã chọn lại ảnh mặc định");
                     }
                 })
                 .setNegativeButton("Hủy", null)
@@ -203,43 +253,40 @@ public class ProfileEditActivity extends AppCompatActivity {
             }
         }
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(R.string.profile_avatar_from_url)
-                .setView(dialogView)
-                .setPositiveButton("Áp dụng", null)
-                .setNegativeButton("Hủy", null)
-                .create();
-
-        dialog.setOnShowListener(d -> {
-            Button positiveBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-            positiveBtn.setOnClickListener(v -> {
-                String url = urlInput.getText() != null ? urlInput.getText().toString().trim() : "";
-                if (!AvatarImageHelper.isHttpUrl(url)) {
-                    inputLayout.setError("Vui lòng nhập link ảnh hợp lệ (http:// hoặc https://)");
-                    return;
-                }
-                inputLayout.setError(null);
-                positiveBtn.setEnabled(false);
-                positiveBtn.setText("Đang tải...");
-
-                AvatarImageHelper.loadAvatarFromUrl(avatarView, url, fallbackAvatarResId, (success, errorMessage) -> {
-                    if (isFinishing() || isDestroyed()) {
+        DialogHelper.showFormDialog(
+                this,
+                getString(R.string.profile_avatar_from_url),
+                dialogView,
+                "Hủy",
+                "Áp dụng",
+                (dialog, positiveBtn) -> {
+                    String url = DialogHelper.textOf(urlInput);
+                    if (!AvatarImageHelper.isHttpUrl(url)) {
+                        inputLayout.setError("Vui lòng nhập link ảnh hợp lệ (http:// hoặc https://)");
                         return;
                     }
-                    if (success) {
-                        selectedAvatarUri = url;
-                        dialog.dismiss();
-                        Toast.makeText(this, "Đã cập nhật ảnh đại diện từ link", Toast.LENGTH_SHORT).show();
-                    } else {
-                        positiveBtn.setEnabled(true);
-                        positiveBtn.setText("Áp dụng");
-                        inputLayout.setError(errorMessage);
-                    }
-                });
-            });
-        });
+                    inputLayout.setError(null);
+                    positiveBtn.setEnabled(false);
+                    positiveBtn.setText("Đang tải...");
 
-        dialog.show();
+                    AvatarImageHelper.loadAvatarFromUrl(avatarView, url, (success, errorMessage) -> {
+                        if (!isAlive()) {
+                            return;
+                        }
+                        if (success) {
+                            selectedAvatarUri = url;
+                            if (dialog.isShowing()) {
+                                dialog.dismiss();
+                            }
+                            showToast("Đã cập nhật ảnh đại diện từ link");
+                        } else {
+                            positiveBtn.setEnabled(true);
+                            positiveBtn.setText("Áp dụng");
+                            inputLayout.setError(errorMessage);
+                        }
+                    });
+                }
+        );
     }
 
     private void launchPhotoPicker() {
@@ -248,7 +295,7 @@ public class ProfileEditActivity extends AppCompatActivity {
                     .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
                     .build());
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "Thiết bị không hỗ trợ chọn ảnh từ thư viện", Toast.LENGTH_SHORT).show();
+            showToast("Thiết bị không hỗ trợ chọn ảnh từ thư viện");
         }
     }
 
@@ -256,7 +303,7 @@ public class ProfileEditActivity extends AppCompatActivity {
         try {
             takePhotoLauncher.launch(null);
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "Không tìm thấy ứng dụng camera", Toast.LENGTH_SHORT).show();
+            showToast("Không tìm thấy ứng dụng camera");
         }
     }
 

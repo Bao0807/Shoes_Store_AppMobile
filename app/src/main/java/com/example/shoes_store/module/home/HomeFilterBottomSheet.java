@@ -9,6 +9,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.shoes_store.R;
 import com.example.shoes_store.core.CurrencyFormatUtil;
@@ -30,10 +31,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         void onFilterApplied(HomeFilterState updatedState);
     }
 
-    private static final String[] CATEGORIES = {"Tất cả", "Daily", "Race", "Tempo", "Trail", "Recovery"};
-    private static final String[] BRANDS = {"Tất cả", "Nike", "ASICS", "HOKA", "Adidas", "Saucony", "Brooks"};
-
-    private final HomeRepository repository = new HomeRepository();
+    private HomeViewModel viewModel;
     private HomeFilterState workingState = new HomeFilterState();
     private OnFilterAppliedListener listener;
 
@@ -42,6 +40,14 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         sheet.workingState = new HomeFilterState(currentState);
         sheet.listener = listener;
         return sheet;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (savedInstanceState != null && listener == null) {
+            dismissAllowingStateLoss();
+        }
     }
 
     @Nullable
@@ -53,6 +59,11 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        if (listener == null) {
+            dismissAllowingStateLoss();
+            return;
+        }
+        viewModel = new ViewModelProvider(requireActivity()).get(HomeViewModel.class);
         ChipGroup categoryGroup = view.findViewById(R.id.filter_category_chips);
         ChipGroup brandGroup = view.findViewById(R.id.filter_brand_chips);
         TextView categoryHint = view.findViewById(R.id.filter_category_hint);
@@ -61,7 +72,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         RangeSlider priceSlider = view.findViewById(R.id.filter_price_slider);
         MaterialButton applyBtn = view.findViewById(R.id.filter_apply_btn);
 
-        populateChips(categoryGroup, CATEGORIES, value -> {
+        populateChips(categoryGroup, viewModel.getAvailableCategories(), value -> {
             if (HomeFilterState.ALL.equals(value)) {
                 workingState.clearCategories();
             } else {
@@ -70,7 +81,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
             syncFilterUi(categoryGroup, brandGroup, categoryHint, brandHint, applyBtn);
         });
 
-        populateChips(brandGroup, BRANDS, value -> {
+        populateChips(brandGroup, viewModel.getAvailableBrands(), value -> {
             if (HomeFilterState.ALL.equals(value)) {
                 workingState.clearBrands();
             } else {
@@ -114,7 +125,7 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
         void onChipClicked(String value);
     }
 
-    private void populateChips(ChipGroup group, String[] items, ChipClickCallback callback) {
+    private void populateChips(ChipGroup group, List<String> items, ChipClickCallback callback) {
         group.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         for (String label : items) {
@@ -178,8 +189,11 @@ public class HomeFilterBottomSheet extends BottomSheetDialogFragment {
     }
 
     private void updateApplyButtonText(MaterialButton applyBtn) {
+        if (viewModel == null) {
+            return;
+        }
         if (workingState.hasAnyFilter()) {
-            int matchCount = repository.filterAndSort(workingState).size();
+            int matchCount = viewModel.countMatchingProducts(workingState);
             applyBtn.setText("Áp dụng (" + matchCount + " mẫu)");
         } else {
             applyBtn.setText(R.string.filter_apply);
